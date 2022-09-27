@@ -1,6 +1,6 @@
 # 🥔 Potatis
 
-<img width="500" alt="pm" src="screenshots/dk.png"><img width="500" alt="dk" src="screenshots/pm.png">
+<img width="450" alt="pm" src="screenshots/dk.png"><img width="450" alt="dk" src="screenshots/pm.png">
 
 - `/mos6502` - Generic CPU emulator. Passes all tests, including illegal ops. (No BCD mode).
 - `/nes` - A very incomplete NES emulator.
