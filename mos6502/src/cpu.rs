@@ -45,12 +45,12 @@ impl Cpu {
   const RESET_VECTOR: u16 = 0xfffc;
   const IRQ_VECTOR: u16 = 0xfffe;
 
-  pub fn new(mem: Box<dyn Bus>) -> Self {
+  pub fn new<T : Bus + 'static>(mem: T) -> Self {
     Self { 
       pc: 0,
       flags: [0; 8],
       regs: [0; 4],
-      mem,
+      mem: Box::new(mem),
       extra_cycles: 0,
     }
   }
@@ -704,7 +704,7 @@ mod tests {
   }
 
   fn sut() -> Cpu {
-    Cpu::new(Box::new(TestBus([0; 0xffff + 1])))
+    Cpu::new(TestBus([0; 0xffff + 1]))
   }
 
   #[test]

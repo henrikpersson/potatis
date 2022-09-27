@@ -11,7 +11,7 @@
 ```rust
 let load_base = 0x2000;
 let mem = NonMappedMemory::load(&program[..], load_base);
-let cpu = Cpu::new(Box::new(mem));
+let cpu = Cpu::new(mem);
 let mut machine = Mos6502::new(cpu);
 
 loop {

@@ -123,15 +123,15 @@ impl PPU {
       }
       Register::PPUDATA => {
         let value = self.internal_read(self.v.get());
-				let return_value = match self.v.get() {
-					0..=0x3eff => self.data_buffer.get(),
-					_ => (value & 0b00111111) | (self.openbus.read() & 0b11000000) // palette, high 2 bits should be from decay
-				};
-				self.data_buffer.set(value);
+        let return_value = match self.v.get() {
+          0..=0x3eff => self.data_buffer.get(),
+          _ => (value & 0b00111111) | (self.openbus.read() & 0b11000000) // palette, high 2 bits should be from decay
+        };
+        self.data_buffer.set(value);
 
-				self.inc_vram();
-				self.openbus.write(return_value);
-				return_value
+        self.inc_vram();
+        self.openbus.write(return_value);
+        return_value
       }
       Register::OAMDATA => self.oam[self.oam_address as usize],
       _ => self.openbus.read()

@@ -5,7 +5,7 @@ fn run_test_rom(file: &str, load_base: u16, entry_point: u16, success_address: u
   let program = std::fs::read(path).expect("failed to load test rom");
 
   let mem = NonMappedMemory::load(&program[..], load_base);
-  let mut cpu = Cpu::new(Box::new(mem));
+  let mut cpu = Cpu::new(mem);
   cpu.set_pc(entry_point);
   
   // debugger.add_breakpoint(Breakpoint::Opcode("DEX".into()));

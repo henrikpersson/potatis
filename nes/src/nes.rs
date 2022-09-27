@@ -32,7 +32,7 @@ impl Nes {
     let joypad = Rc::new(RefCell::new(Joypad::default()));
     let bus = NesBus::new(rom_mapper.clone(), ppu.clone(), joypad.clone());
 
-    let mut cpu = Cpu::new(Box::new(bus));
+    let mut cpu = Cpu::new(bus);
     cpu.reset();
 
     let mut machine = Mos6502::new(cpu);
