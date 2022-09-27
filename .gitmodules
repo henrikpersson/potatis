@@ -1,0 +1,12 @@
+[submodule "6502_65C02_functional_tests"]
+	path = test-roms/6502_65C02_functional_tests
+	url = git@github.com:amb5l/6502_65C02_functional_tests.git
+[submodule "nes-test-roms"]
+	path = test-roms/nes-test-roms
+	url = git@github.com:christopherpow/nes-test-roms.git
+[submodule "test-roms/nes-test-roms"]
+	path = test-roms/nes-test-roms
+	url = git@github.com:christopherpow/nes-test-roms.git
+[submodule "test-roms/6502_65C02_functional_tests"]
+	path = test-roms/6502_65C02_functional_tests
+	url = git@github.com:amb5l/6502_65C02_functional_tests.git

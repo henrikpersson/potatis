@@ -1,0 +1,32 @@
+Modules list:
+-------------
+functional_test_full.o:
+    CODE              Offs=000000  Size=003435  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=00007B  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=00005C  Align=00001  Fill=0000
+    VECTORS           Offs=000000  Size=000006  Align=00001  Fill=0000
+
+
+Segment list:
+-------------
+Name                   Start     End    Size  Align
+----------------------------------------------------
+ZEROPAGE              000000  00005B  00005C  00001
+DATA                  000200  00027A  00007B  00001
+CODE                  000400  003834  003435  00001
+VECTORS               00FFFA  00FFFF  000006  00001
+
+
+Exports list by name:
+---------------------
+
+
+
+Exports list by value:
+----------------------
+
+
+
+Imports list:
+-------------
+

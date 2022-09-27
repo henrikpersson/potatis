@@ -1,0 +1,5 @@
+[workspace]
+members = ["common", "mos6502", "nes", "nes-sdl"]
+
+[profile.test]
+opt-level = 3 # Otherwise integration tests take too long
