@@ -9,7 +9,7 @@ pub struct Mos6502 {
 
 impl Mos6502 {
   pub fn new(cpu: Cpu) -> Self {
-    let debugger = Debugger::new();
+    let debugger = Debugger::default();
     Self { cpu, debugger, total_cycles: 0, total_ticks: 0 }
   }
 

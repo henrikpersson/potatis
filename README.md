@@ -4,13 +4,14 @@
 
 - `/mos6502` - Generic CPU emulator. Passes all tests, including illegal ops. (No BCD mode).
 - `/nes` - A very incomplete NES emulator.
-- `/nes-sdl` - Binary target that uses SDL for I/O.
+- `/nes-sdl` - Native target using SDL.
+- `/nes-wasm` - Browser target using WASM.
 
 ## /mos6502
 
 ```rust
 let load_base = 0x2000;
-let mem = NonMappedMemory::load(&program[..], load_base);
+let mem = Memory::load(&program[..], load_base);
 let cpu = Cpu::new(mem);
 let mut machine = Mos6502::new(cpu);
 
@@ -44,7 +45,7 @@ Supported mappers:
 ```rust
 impl nes::HostSystem for MyHost {
   fn render(&mut self, frame: &RenderFrame) {
-    // frame.pixels() == 256 * 240 * 3 RGB array
+    // frame.pixels() == 256 * 240 * 4 RGBA array
   }
 
   fn poll_events(&mut self, joypad: &mut Joypad) {
@@ -68,6 +69,13 @@ loop {
 
 `cargo run -- --help` for options
 
+## /nes-wasm
+
+1. `cd nes-wasm`
+2. `wasm-pack build --release --target web`
+3. `npm install`
+4. `npm run dev`
+
 # Test
 
 Run all unit and integration tests (for all crates):
@@ -79,7 +87,8 @@ Run all unit and integration tests (for all crates):
 - Fix PPU
 - Implement scrolling
 - More mappers
-- WASM target
+- APU
+- ~~WASM target~~
 
 # Thanks
 - https://www.masswerk.at/6502/6502_instruction_set.html

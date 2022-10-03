@@ -1,0 +1,20 @@
+{
+  "name": "nes-wasm",
+  "version": "0.0.1",
+  "description": "",
+  "scripts": {
+    "build": "wasm-pack build --release --target web",
+    "dev": "snowpack dev",
+    "clean": "rm -r node_modules && rm -r pkg"
+  },
+  "dependencies": {
+    "nes-wasm": "file:./pkg"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.24.0",
+    "@typescript-eslint/parser": "^4.24.0",
+    "eslint": "^7.27.0",
+    "snowpack": "^3.5.1",
+    "snowpack-plugin-wasm-pack": "^1.1.0"
+  }
+}

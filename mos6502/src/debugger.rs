@@ -35,7 +35,7 @@ enum Watch {
 }
 
 impl Debugger {
-  pub fn new() -> Self {
+  pub fn default() -> Self {
     Self { 
       stdin: Getch::new(), 
       breakpoints: Vec::with_capacity(2),

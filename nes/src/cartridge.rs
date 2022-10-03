@@ -62,7 +62,10 @@ impl Cartridge {
 
   pub fn blow_dust(path: PathBuf) -> Result<Cartridge, PotatisError> {
     let bin = std::fs::read(path)?;
+    Self::blow_binary_dust(&bin)
+  }
 
+  pub fn blow_binary_dust(bin: &[u8]) -> Result<Cartridge, PotatisError> {
     if bin[0..4] != Self::MAGIC {
       return Err(PotatisError::InvalidCartMagic);
     }

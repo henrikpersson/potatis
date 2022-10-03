@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "lib": ["ES2017", "DOM"],
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "baseUrl": "./",
+    "paths": {
+      "nes-wasm": ["./pkg"]
+    }
+  }
+}

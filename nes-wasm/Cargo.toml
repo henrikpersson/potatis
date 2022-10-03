@@ -1,0 +1,12 @@
+[package]
+name = "nes-wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+nes = { path = "../nes" }
+wasm-bindgen = "0.2.83"
+console_error_panic_hook = "0.1.6"

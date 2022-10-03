@@ -11,9 +11,9 @@ pub trait Bus {
   }
 }
 
-pub struct NonMappedMemory([u8; MEM_SIZE]);
+pub struct Memory([u8; MEM_SIZE]);
 
-impl NonMappedMemory {
+impl Memory {
   pub fn load(program: &[u8], base: u16) -> Self {
     let mut mem = [0x00; MEM_SIZE];
     let base = base as usize;
@@ -23,7 +23,7 @@ impl NonMappedMemory {
   }
 }
 
-impl Bus for NonMappedMemory {
+impl Bus for Memory {
   fn read8(&self, address: u16) -> u8 {
     self.0[address as usize]
   }

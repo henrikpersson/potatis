@@ -1,10 +1,10 @@
-use mos6502::{memory::NonMappedMemory, cpu::Cpu, mos6502::Mos6502};
+use mos6502::{memory::Memory, cpu::Cpu, mos6502::Mos6502};
 
 fn run_test_rom(file: &str, load_base: u16, entry_point: u16, success_address: u16) -> (bool, usize) {
   let path = format!("../test-roms/bin/{}", file);
   let program = std::fs::read(path).expect("failed to load test rom");
 
-  let mem = NonMappedMemory::load(&program[..], load_base);
+  let mem = Memory::load(&program[..], load_base);
   let mut cpu = Cpu::new(mem);
   cpu.set_pc(entry_point);
   

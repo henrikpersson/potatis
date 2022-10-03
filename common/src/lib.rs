@@ -16,15 +16,6 @@ pub mod utils {
 
 #[allow(dead_code)]
 pub mod bits {
-  pub const BIT0: usize = 1;
-  pub const BIT1: usize = 1 << 1;
-  pub const BIT2: usize = 1 << 2;
-  pub const BIT3: usize = 1 << 3;
-  pub const BIT4: usize = 1 << 4;
-  pub const BIT5: usize = 1 << 5;
-  pub const BIT6: usize = 1 << 6;
-  pub const BIT7: usize = 1 << 7;
-
   pub fn is_signed(n: u8) -> bool {
     n & (1 << 7) != 0
   }

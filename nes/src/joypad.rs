@@ -3,14 +3,14 @@ use bitflags::bitflags;
 bitflags! {
   #[derive(Default)]
   pub struct JoypadButton: u8 {
-    const A = 0b00000001;
-    const B = 0b00000010;
-    const SELECT = 0b00000100;
-    const START = 0b00001000;
-    const UP = 0b00010000;
-    const DOWN = 0b00100000;
-    const LEFT = 0b01000000;
-    const RIGHT = 0b10000000;
+    const A = 1;
+    const B = 1 << 1;
+    const SELECT = 1 << 2;
+    const START = 1 << 3;
+    const UP = 1 << 4;
+    const DOWN = 1 << 5;
+    const LEFT = 1 << 6;
+    const RIGHT = 1 << 7;
   }
 }
 

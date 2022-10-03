@@ -1,5 +1,5 @@
 [workspace]
-members = ["common", "mos6502", "nes", "nes-sdl"]
+members = ["common", "mos6502", "nes", "nes-sdl", "nes-wasm"]
 
 [profile.test]
 opt-level = 3 # Otherwise integration tests take too long

@@ -94,7 +94,7 @@ impl PPU {
       status: StatusRegister::new(),
       mask: MaskRegister::default(),
       palettes: Self::BLARRG_PALETTE,
-      frame: RenderFrame::new(),
+      frame: RenderFrame::default(),
       openbus: OpenBus::default(),
       nmi_pending: false,
 
