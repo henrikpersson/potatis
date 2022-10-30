@@ -1,8 +1,12 @@
+#[macro_use]
+extern crate lazy_static;
+
 pub use mos6502;
 
 mod mappers;
 mod nesbus;
 mod ppu;
+mod fonts;
 
 pub mod frame;
 pub mod cartridge;

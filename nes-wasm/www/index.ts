@@ -19,6 +19,8 @@ export class BrowserNes {
   frame_ready: boolean;
   keyboard: KeyState[];
   killed: boolean;
+  req_frame: number;
+  delay_ms: number;
 
   constructor(ctx: CanvasRenderingContext2D, mem: WebAssembly.Memory, bincart: Uint8Array) {
     this.nes = NesWasm.new(this, bincart);
@@ -63,6 +65,10 @@ export class BrowserNes {
     this.frame_ready = true;
   }
 
+  delay(millis: number) {
+    this.delay_ms = millis;
+  }
+
   loop() {
     const inner = () => {
       this.frame_ready = false;
@@ -71,14 +77,23 @@ export class BrowserNes {
       }
 
       if (!this.killed) {
-        requestAnimationFrame(inner);
+        if (this.delay_ms != 0) {
+          setTimeout(() => {
+            this.delay_ms = 0;
+            this.req_frame = requestAnimationFrame(inner);
+          }, this.delay_ms);
+        }
+        else {
+          this.req_frame = requestAnimationFrame(inner);
+        }
       }
     }
 
-    requestAnimationFrame(inner);
+    this.req_frame = requestAnimationFrame(inner);
   }
 
   kill() {
+    cancelAnimationFrame(this.req_frame);
     this.killed = true;
   }
 }

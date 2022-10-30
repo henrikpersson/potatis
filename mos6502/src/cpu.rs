@@ -192,28 +192,28 @@ impl Cpu {
         self.set_pc(ret);
       }
       Opcode::BNE => {
-        self.branch_if(operands[0], |cpu| cpu[Flag::Z] == 0);
+        self.branch_if(operands[0], self[Flag::Z] == 0);
       }
       Opcode::BEQ => {
-        self.branch_if(operands[0], |cpu| cpu[Flag::Z] == 1);
+        self.branch_if(operands[0], self[Flag::Z] == 1);
       }
       Opcode::BPL => {
-        self.branch_if(operands[0], |cpu| cpu[Flag::N] == 0);
+        self.branch_if(operands[0], self[Flag::N] == 0);
       }
       Opcode::BMI => {
-        self.branch_if(operands[0], |cpu| cpu[Flag::N] == 1);
+        self.branch_if(operands[0], self[Flag::N] == 1);
       }
       Opcode::BCC => {
-        self.branch_if(operands[0], |cpu| cpu[Flag::C] == 0);
+        self.branch_if(operands[0], self[Flag::C] == 0);
       }
       Opcode::BCS => {
-        self.branch_if(operands[0], |cpu| cpu[Flag::C] == 1);
+        self.branch_if(operands[0], self[Flag::C] == 1);
       }
       Opcode::BVC => {
-        self.branch_if(operands[0], |cpu| cpu[Flag::V] == 0);
+        self.branch_if(operands[0], self[Flag::V] == 0);
       }
       Opcode::BVS => {
-        self.branch_if(operands[0], |cpu| cpu[Flag::V] == 1);
+        self.branch_if(operands[0], self[Flag::V] == 1);
       }
       Opcode::CPY => {
         let val = inst.resolve_operand_value(self);
@@ -611,12 +611,12 @@ impl Cpu {
     res
   }
 
-  fn branch_if(&mut self, offset: u8, cond: impl Fn(&Cpu) -> bool) {
+  fn branch_if(&mut self, offset: u8, cond: bool) {
     if offset == 0 {
       // (An offset of #0 corresponds to the immedately following address — or a rather odd and expensive NOP.)
       return;
     }
-    if cond(self) {
+    if cond {
       self.inc_pc(2);
       let branch_target = self.calc_offset_pc(offset);
     

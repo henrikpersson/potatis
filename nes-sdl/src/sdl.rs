@@ -46,7 +46,6 @@ impl SdlHostSystem<'_> {
 }
 
 impl HostSystem for SdlHostSystem<'_> {
-
   fn render(&mut self, frame: &RenderFrame) {
     self.texture.update(None, frame.pixels(), frame.pitch()).unwrap();
     self.canvas.copy(&self.texture, None, None).unwrap();

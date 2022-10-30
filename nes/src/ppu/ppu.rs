@@ -320,6 +320,10 @@ impl PPU {
     &self.frame
   }
 
+  pub fn frame_mut(&mut self) -> &mut RenderFrame {
+    &mut self.frame
+  }
+
   pub fn scanline(&self) -> usize {
     self.scanline
   }
@@ -429,35 +433,5 @@ mod tests {
     assert!(PPU::mirror_vram(&Mirroring::Vertical, 0x2cff) == nametable2_base + 0xff);
     assert!(PPU::mirror_vram(&Mirroring::Vertical, 0x2400) == nametable2_base);
     assert!(PPU::mirror_vram(&Mirroring::Vertical, 0x2401) == nametable2_base + 1);
-  }
-
-  fn map(x: u8, y: u8) -> u16 {
-    let yoffset = (y / 8) * 32;
-    let xoffset = x / 8;
-    0x2000 + xoffset as u16 + yoffset as u16
-  }
-
-  fn map_real(x: u8, y: u8) -> u16 {
-    let yoffset = (y / 8) * 32;
-    let xoffset = x / 8;
-    0x2000 + xoffset as u16 + yoffset as u16
-  }
-
-  #[test]
-  fn ixymap() {
-    assert!(map(0, 0) == 0x2000);
-    assert!(map(8, 0) == 0x2001);
-    assert!(map(248, 0) == 0x201f);
-    assert!(map(0, 8) == 0x2020);
-    assert!(map(8, 8) == 0x2021);
-  }
-
-  #[test]
-  fn ixymap_real() {
-    assert!(map_real(7, 0) == 0x2000);
-    assert!(map_real(7, 1) == 0x2000);
-    assert!(map_real(0, 7) == 0x2000);
-    assert!(map_real(15, 0) == 0x2001);
-    assert!(map_real(9, 3) == 0x2001);
   }
 }

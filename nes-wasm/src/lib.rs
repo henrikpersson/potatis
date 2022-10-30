@@ -20,6 +20,9 @@ extern {
 
   #[wasm_bindgen(method)]
   pub fn poll_keyboard(this: &BrowserNes, ptr: *mut u8);
+
+  #[wasm_bindgen(method)]
+  pub fn delay(this: &BrowserNes, millis: usize);
 }
 
 #[wasm_bindgen(start)]
@@ -32,6 +35,7 @@ pub fn main() -> Result<(), JsValue> {
 struct WasmHostSystem {
   browser: BrowserNes,
   keyboard: KeyboardState,
+  time: wasm_timer::Instant
 }
 
 impl HostSystem for WasmHostSystem {
@@ -64,11 +68,19 @@ impl HostSystem for WasmHostSystem {
       joypad.on_event(joypad_event);
     }
   }
+
+  fn elapsed_millis(&self) -> usize {
+    self.time.elapsed().as_millis() as usize
+  }
+
+  fn delay(&self, d: std::time::Duration) {
+    self.browser.delay(d.as_millis() as usize);
+  }
 }
 
 impl WasmHostSystem {
   pub fn new(browser: BrowserNes) -> Self {
-    Self { browser, keyboard: KeyboardState::default() }
+    Self { browser, keyboard: KeyboardState::default(), time: wasm_timer::Instant::now() }
   }
 }
 

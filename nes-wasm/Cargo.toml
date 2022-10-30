@@ -9,4 +9,5 @@ crate-type = ["cdylib"]
 [dependencies]
 nes = { path = "../nes" }
 wasm-bindgen = "0.2.83"
+wasm-timer = "0.2.5"
 console_error_panic_hook = "0.1.6"
