@@ -20,30 +20,32 @@ struct Cli {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Cli = Cli::from_args();
-    println!("Loading {:?}.", args.path);
-    
-    let cart = Cartridge::blow_dust(args.path)?;
-    println!("Loaded! {}", cart);
-
-    let mut nes = Nes::insert(cart, SdlHostSystem::new());
-
-    let debugger = nes.debugger();
-    debugger.verbose(args.verbose);
-
-    if let Some(bp) = args.breakpoint {
-      debugger.add_breakpoint(Breakpoint::Address(bp));
-    }
-
-    if let Some(opbp) = args.opcode_breakpoint {
-      debugger.add_breakpoint(Breakpoint::Opcode(opbp));
-    }
-
-    if args.debug {
-      debugger.enable();
-    }
+  let args: Cli = Cli::from_args();
+  println!("Loading {:?}.", args.path);
   
-    loop {
-      nes.tick();
-    }
+  let cart = Cartridge::blow_dust(args.path)?;
+  println!("Loaded! {}", cart);
+
+  let mut nes = Nes::insert(cart, SdlHostSystem::new());
+
+  let debugger = nes.debugger();
+  debugger.verbose(args.verbose);
+
+  if let Some(bp) = args.breakpoint {
+    debugger.add_breakpoint(Breakpoint::Address(bp));
+  }
+
+  if let Some(opbp) = args.opcode_breakpoint {
+    debugger.add_breakpoint(Breakpoint::Opcode(opbp));
+  }
+
+  if args.debug {
+    debugger.enable();
+  }
+
+  while nes.powered_on() {
+    nes.tick();
+  }
+
+  Ok(())
 }

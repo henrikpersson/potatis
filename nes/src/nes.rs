@@ -10,9 +10,18 @@ lazy_static! {
   static ref TIME: Instant = Instant::now();
 }
 
+#[derive(PartialEq, Eq)]
+pub enum Shutdown { Yes, No }
+
+impl From<bool> for Shutdown {
+  fn from(b: bool) -> Self {
+    if b { Shutdown::Yes } else { Shutdown::No }
+  }
+}
+
 pub trait HostSystem {
   fn render(&mut self, frame: &RenderFrame);
-  fn poll_events(&mut self, joypad: &mut Joypad);
+  fn poll_events(&mut self, joypad: &mut Joypad) -> Shutdown;
   fn elapsed_millis(&self) -> usize {
     TIME.elapsed().as_millis() as usize
   }
@@ -27,7 +36,7 @@ pub trait HostSystem {
 struct HeadlessHost;
 impl HostSystem for HeadlessHost {
   fn render(&mut self, _: &RenderFrame) {}
-  fn poll_events(&mut self, _: &mut Joypad) {}
+  fn poll_events(&mut self, _: &mut Joypad) -> Shutdown { Shutdown::No }
   fn elapsed_millis(&self) -> usize { 0 }
   fn delay(&self, _: Duration) {}
 }
@@ -37,7 +46,8 @@ pub struct Nes {
   ppu: Rc<RefCell<PPU>>,
   host: Box<dyn HostSystem>,
   joypad: Rc<RefCell<Joypad>>,
-  timing: FrameTiming
+  timing: FrameTiming,
+  shutdown: Shutdown,
 }
 
 impl Nes {
@@ -60,7 +70,8 @@ impl Nes {
       ppu,
       host: Box::new(host),
       joypad,
-      timing: FrameTiming::new()
+      timing: FrameTiming::new(),
+      shutdown: Shutdown::No
     }
   }
 
@@ -92,8 +103,12 @@ impl Nes {
     self.timing.fps_max(fps_max);
   }
 
+  pub fn powered_on(&self) -> bool {
+    self.shutdown == Shutdown::No
+  }
+
   pub fn tick(&mut self) {
-    self.host.poll_events(&mut self.joypad.borrow_mut());
+    self.shutdown = self.host.poll_events(&mut self.joypad.borrow_mut());
 
     let cpu_cycles = self.machine.tick();
     self.ppu.borrow_mut().tick(cpu_cycles * 3);

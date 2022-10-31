@@ -1,4 +1,4 @@
-use nes::{joypad::{Joypad, JoypadEvent, JoypadButton}, frame::RenderFrame, nes::HostSystem};
+use nes::{joypad::{Joypad, JoypadEvent, JoypadButton}, frame::RenderFrame, nes::{HostSystem, Shutdown}};
 use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode, Sdl, render::{Texture, Canvas, TextureCreator}, video::{Window, WindowContext}};
 
 pub struct SdlHostSystem<'a> {
@@ -52,7 +52,7 @@ impl HostSystem for SdlHostSystem<'_> {
     self.canvas.present();
   }
 
-  fn poll_events(&mut self, joypad: &mut Joypad) {
+  fn poll_events(&mut self, joypad: &mut Joypad) -> Shutdown {
     for event in self.context.event_pump().unwrap().poll_iter() {
       if let Some(joypad_ev) = map_joypad(&event) {
         joypad.on_event(joypad_ev);
@@ -63,11 +63,12 @@ impl HostSystem for SdlHostSystem<'_> {
         Event::Quit {..} |
         Event::KeyDown { keycode: Some(Keycode::Q), .. } |
         Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-          std::process::exit(1) // TODO: exit more gracefully
+          return Shutdown::Yes
         }
         _ => ()
       }
     }
+    Shutdown::No
   }
 }
 

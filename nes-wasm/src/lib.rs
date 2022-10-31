@@ -1,4 +1,4 @@
-use nes::{cartridge::Cartridge, nes::{Nes, HostSystem}, joypad::{JoypadButton, JoypadEvent}};
+use nes::{cartridge::Cartridge, nes::{Nes, HostSystem, Shutdown}, joypad::{JoypadButton, JoypadEvent}};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 #[wasm_bindgen]
@@ -43,7 +43,7 @@ impl HostSystem for WasmHostSystem {
     self.browser.on_frame_ready(frame.pixels().as_ptr(), frame.pixels().len());
   }
 
-  fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) {
+  fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) -> Shutdown {
     self.browser.poll_keyboard(self.keyboard.0.as_mut_ptr() as *mut u8);
 
     for (i, k) in self.keyboard.0.iter().enumerate() {
@@ -67,6 +67,8 @@ impl HostSystem for WasmHostSystem {
 
       joypad.on_event(joypad_event);
     }
+
+    Shutdown::No
   }
 
   fn elapsed_millis(&self) -> usize {
