@@ -17,7 +17,7 @@ pub mod error {
   #[derive(Debug)]
   pub enum PotatisError {
     IO(std::io::Error),
-    InvalidCartMagic,
+    InvalidCartridge(&'static str),
     NotYetImplemented(String),
   }
 

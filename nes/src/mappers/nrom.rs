@@ -49,7 +49,12 @@ impl Bus for NROM {
   fn write8(&mut self, val: u8, address: u16) {
     match address {
       // TODO: Mirrored, Write protectable w external switch
-      0x0000..=0x1fff => (),//panic!("writing to chr rom?? {:#06x}", address), //self.chr_rom[address as usize] = val,
+      0x0000..=0x1fff => {
+        if !self.cart.chr_ram_mode() {
+          panic!("This cart is not configured for CHR RAM! Legit write?")
+        }
+        self.cart.chr_mut()[address as usize] = val;
+      }
       0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000] = val,
       _ => {
         // println!("writing to {:#06x}", address);

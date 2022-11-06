@@ -29,6 +29,7 @@ enum ChrBankMode {
 }
 
 pub struct MMC1 {
+  cart: Cartridge,
   prg_ram: [u8; kilobytes::KB8],
 
   prg_rom_banks: Vec<Vec<u8>>,
@@ -39,7 +40,6 @@ pub struct MMC1 {
   chr_rom_banks: Vec<Vec<u8>>,
   chr_rom_bank_mode: ChrBankMode,
   selected_chr_bank: u8,
-  chr_ram_mode: bool,
 
   num_shift_writes: u8,
   shift_register: u8,
@@ -51,25 +51,17 @@ impl MMC1 {
     assert!(chunks.remainder().len() == 0);
     let prg_rom_banks = chunks.map(|s| s.to_vec()).collect();
 
-    let chr_ram_mode: bool;
-    let chr_rom_banks = if cart.chr().len() == 0 {
-      // CHR RAM
-      chr_ram_mode = true;
-      vec![vec![0; kilobytes::KB4]; 2]
-    } else {
-      chr_ram_mode = false;
-      let chunks = cart.chr().chunks_exact(kilobytes::KB4);
-      assert!(chunks.remainder().len() == 0);
-      chunks.map(|s| s.to_vec()).collect()
-    };
+    let chunks = cart.chr().chunks_exact(kilobytes::KB4);
+    assert!(chunks.remainder().len() == 0);
+    let chr_rom_banks = chunks.map(|s| s.to_vec()).collect();
 
-    MMC1 { 
+    MMC1 {
+      cart,
       prg_ram: [0; kilobytes::KB8],
       prg_rom_banks: prg_rom_banks, 
       prg_rom_bank_mode: PrgBankMode::FixFirstLowerSwitchUpper, // TODO don't understand the default yet..
       chr_rom_banks: chr_rom_banks,
       chr_rom_bank_mode: ChrBankMode::Switch8Kb, // TODO: default?
-      chr_ram_mode,
       selected_chr_bank: 0,
       shift_register: 0,
       num_shift_writes: 0,
@@ -191,8 +183,8 @@ impl MMC1 {
   }
 
   fn write_chr_ram(&mut self, val: u8, address: u16) {
-    if !self.chr_ram_mode {
-      panic!("writing to CHR without CHR RAM enabled.. is this correct?")
+    if !self.cart.chr_ram_mode() {
+      panic!("This cart is not configured for CHR RAM! Legit write?")
     }
 
     // TODO: don't to this every write op
