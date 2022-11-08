@@ -58,7 +58,7 @@ impl Bus for NROM {
       0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000] = val,
       _ => {
         // println!("writing to {:#06x}", address);
-        panic!("writing to rom");
+        panic!("writing to rom, a test probably finished runnning.");
       }
     }
   }
