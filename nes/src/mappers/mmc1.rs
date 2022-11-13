@@ -48,19 +48,19 @@ pub struct MMC1 {
 impl MMC1 {
   pub fn new(cart: Cartridge) -> MMC1 {
     let chunks = cart.prg().chunks_exact(kilobytes::KB16);
-    assert!(chunks.remainder().len() == 0);
+    assert!(chunks.remainder().is_empty());
     let prg_rom_banks = chunks.map(|s| s.to_vec()).collect();
 
     let chunks = cart.chr().chunks_exact(kilobytes::KB4);
-    assert!(chunks.remainder().len() == 0);
+    assert!(chunks.remainder().is_empty());
     let chr_rom_banks = chunks.map(|s| s.to_vec()).collect();
 
     MMC1 {
       cart,
       prg_ram: [0; kilobytes::KB8],
-      prg_rom_banks: prg_rom_banks, 
+      prg_rom_banks, 
       prg_rom_bank_mode: PrgBankMode::FixFirstLowerSwitchUpper, // TODO don't understand the default yet..
-      chr_rom_banks: chr_rom_banks,
+      chr_rom_banks,
       chr_rom_bank_mode: ChrBankMode::Switch8Kb, // TODO: default?
       selected_chr_bank: 0,
       shift_register: 0,
@@ -141,12 +141,18 @@ impl MMC1 {
       _ => ChrBankMode::SwitchTwo4KbBanks
     };
 
+    // println!("setting chr rom bank mode: {:?}", self.chr_rom_bank_mode);
+
     if self.chr_rom_bank_mode == ChrBankMode::SwitchTwo4KbBanks {
       todo!("implement this bank mode")
     }
 
     let prg_rom_bank_mode = (val & 0b01100) >> 2;
     self.prg_rom_bank_mode = prg_rom_bank_mode.into();
+
+    if self.prg_rom_bank_mode != PrgBankMode::FixFirstLowerSwitchUpper {
+      todo!("implement this bank mode: {:?}", self.prg_rom_bank_mode);
+    }
     // println!("setting prg rom bank mode: {:?}", self.prg_rom_bank_mode);
   }
 

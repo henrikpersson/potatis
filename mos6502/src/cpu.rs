@@ -78,7 +78,7 @@ impl Cpu {
     self.extra_cycles = 0;
 
     match inst.opcode() {
-      Opcode::JAM => panic!("jammed"), //println!("WARN!!!! JAMMED"), // TODO, Illegal opcode.. might be used somewhere as a nice HLT?
+      Opcode::JAM => panic!("jammed"),
       Opcode::NOP => {
         // cycles on absX nops
         if inst.mode() == AddressMode::AbsX {
@@ -163,6 +163,9 @@ impl Cpu {
       }
       Opcode::JMP => {
         let target = inst.resolve_operand_address(self);
+        if inst.mode() == AddressMode::Ind {
+          self.set_pc(target + 1);  
+        }
         self.set_pc(target);
       }
       Opcode::JSR => {
@@ -409,7 +412,10 @@ impl Cpu {
     };
 
     // No jmp; advance.
-    if pc_before_exec == self.pc() {
+    // TODO: I was really wrong here, JMP to PC is legit (a way to wait for nmi or something?)
+    //       Added tmp check for JMP, should find a better way. 
+    //       Probably more opcodes than JMP affected.. branch ops??
+    if pc_before_exec == self.pc() && inst.opcode() != Opcode::JMP {
       self.inc_pc(inst.size());
     }
 
@@ -465,7 +471,6 @@ impl Cpu {
     // Jump to NMI vector, TODO cycles
     let vector = self.read16(Self::NMI_VECTOR);
     // println!("NMI interrupt -> {:#06x}", vector);
-    self.add_extra_cycles(2);
     self.set_pc(vector);
   }
 

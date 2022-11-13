@@ -98,7 +98,7 @@ impl NesWasm {
       bin = include_bytes!("../../test-roms/nestest/nestest.nes");
     }
   
-    let cart = Cartridge::blow_binary_dust(bin).unwrap();
+    let cart = Cartridge::load(bin).unwrap();
     log(format!("nes init! {}", cart).as_str());
 
     let nes = Nes::insert(cart, WasmHostSystem::new(browser));

@@ -1,10 +1,10 @@
 
 use std::{rc::Rc, cell::RefCell, time::{Instant, Duration}};
 use mos6502::{mos6502::Mos6502, memory::Bus, cpu::{Cpu, Reg}, debugger::Debugger};
-use crate::{cartridge::Cartridge, nesbus::NesBus, ppu::ppu::PPU, joypad::Joypad, frame::RenderFrame, fonts};
+use crate::{cartridge::Cartridge, nesbus::NesBus, ppu::{ppu::{Ppu, TickEvent}}, joypad::Joypad, frame::RenderFrame, fonts, trace};
 
 const SHOW_FPS: bool = true;
-const DEFAULT_FPS_MAX: usize = 30;
+const DEFAULT_FPS_MAX: usize = 60;
 
 lazy_static! {
   static ref TIME: Instant = Instant::now();
@@ -27,7 +27,7 @@ pub trait HostSystem {
   }
   fn delay(&self, d: Duration) {
     // TODO: This should not be a sleep! We still need to poll events, etc. 
-    // No need to suspend EVERYTHING.
+    // No need to suspend EVERYTHING. SDL_Delay?
     std::thread::sleep(d);
   }
 }
@@ -43,11 +43,11 @@ impl HostSystem for HeadlessHost {
 
 pub struct Nes {
   machine: Mos6502,
-  ppu: Rc<RefCell<PPU>>,
+  ppu: Rc<RefCell<Ppu>>,
   host: Box<dyn HostSystem>,
   joypad: Rc<RefCell<Joypad>>,
   timing: FrameTiming,
-  shutdown: Shutdown,
+  shutdown: Shutdown
 }
 
 impl Nes {
@@ -55,7 +55,7 @@ impl Nes {
     let mirroring = cartridge.mirroring();
     let rom_mapper = crate::mappers::for_cart(cartridge);
 
-    let ppu = Rc::new(RefCell::new(PPU::new(rom_mapper.clone(), mirroring)));
+    let ppu = Rc::new(RefCell::new(Ppu::new(rom_mapper.clone(), mirroring)));
     let joypad = Rc::new(RefCell::new(Joypad::default()));
     let bus = NesBus::new(rom_mapper.clone(), ppu.clone(), joypad.clone());
 
@@ -63,7 +63,7 @@ impl Nes {
     cpu.reset();
 
     let mut machine = Mos6502::new(cpu);
-    machine.inc_cycles(7); // Startup cycles.. (not sure, from nestest)
+    machine.inc_cycles(7); // Startup cycles..
 
     Self { 
       machine,
@@ -77,6 +77,39 @@ impl Nes {
 
   pub fn insert_headless_host(cartridge: Cartridge) -> Self {
     Self::insert(cartridge, HeadlessHost::default())
+  }
+
+  pub fn tick(&mut self) {
+    let last_pc = self.machine.cpu().pc();
+
+    let cpu_cycles = self.machine.tick();
+
+    let last_op = self.debugger().last_opcode();
+    trace!(Tag::Cpu, "pc: ${:04x}, opcode: ${:02x}, cycles: {}", last_pc, last_op, cpu_cycles);
+
+    let mut ppu = self.ppu.borrow_mut();
+    let ppu_event = ppu.tick(cpu_cycles * 3);
+  
+    if ppu_event == TickEvent::EnteredVblank {
+      trace!(Tag::PpuTiming, "==VBLANK==");
+
+      if SHOW_FPS {
+        let fps = self.timing.fps_avg(self.host.elapsed_millis());
+        fonts::draw(fps.to_string().as_str(), (10, 10), ppu.frame_mut());
+      }
+      
+      self.host.render(ppu.frame());
+      self.shutdown = self.host.poll_events(&mut self.joypad.borrow_mut());
+      if let Some(delay)= self.timing.post_render(self.host.elapsed_millis()) {
+        self.host.delay(delay);
+      }
+      self.timing.post_delay(self.host.elapsed_millis());
+
+      if ppu.nmi_on_vblank() {
+        trace!(Tag::PpuTiming, "==NMI==");
+        self.machine.cpu_mut().interrupt_nmi();
+      }
+    }
   }
 
   pub fn debugger(&mut self) -> &mut Debugger {
@@ -105,36 +138,6 @@ impl Nes {
 
   pub fn powered_on(&self) -> bool {
     self.shutdown == Shutdown::No
-  }
-
-  pub fn tick(&mut self) {
-    self.shutdown = self.host.poll_events(&mut self.joypad.borrow_mut());
-
-    let cpu_cycles = self.machine.tick();
-    self.ppu.borrow_mut().tick(cpu_cycles * 3);
-
-    let mut ppu = self.ppu.borrow_mut();
-  
-    if ppu.frame_ready_to_render() {
-      if SHOW_FPS {
-        let fps = self.timing.fps_avg(self.host.elapsed_millis());
-        fonts::draw(fps.to_string().as_str(), (10, 10), ppu.frame_mut());
-      }
-
-      self.host.render(ppu.frame());
-      ppu.clear_frame_ready();
-
-      if let Some(delay)= self.timing.post_render(self.host.elapsed_millis()) {
-        self.host.delay(delay);
-      }
-      self.timing.post_delay(self.host.elapsed_millis());
-    }
-
-    if ppu.is_nmi_pending() {
-      // println!("NMI");
-      self.machine.cpu_mut().interrupt_nmi();
-      ppu.clear_pending_nmi();
-    }
   }
 }
 
@@ -187,7 +190,7 @@ impl std::fmt::Debug for Nes {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let c = self.cpu();
     let scanline = self.ppu.borrow_mut().scanline();
-    let ppu_cycle = self.ppu.borrow_mut().current_cycle();
+    let ppu_cycle = self.ppu.borrow_mut().cycle() + 21;
     // let ppuw = if scanline >= 10 { 3 } else { 3 };
     let ppuw = 3;
     if ppu_cycle < 100 {

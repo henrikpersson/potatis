@@ -21,12 +21,17 @@ impl NROM {
       kilobytes::KB32 => false,
       _ => panic!("invalid size for NROM prg rom")
     };
-    Self { cart, prg_ram: [0; kilobytes::KB8], is_16kb }
+    Self { 
+      cart, 
+      prg_ram: [0; kilobytes::KB8], 
+      is_16kb 
+    }
   }
 }
 
 impl Bus for NROM {
   fn read8(&self, address: u16) -> u8 {
+    // println!("NROM reading addr: {:#06x}", address);
     match address {
       0x0000..=0x1fff => self.cart.chr()[address as usize], // PPU
       // TODO: Mirrored, Write protectable w external switch
@@ -47,19 +52,19 @@ impl Bus for NROM {
   }
 
   fn write8(&mut self, val: u8, address: u16) {
-    match address {
+    // match address {
       // TODO: Mirrored, Write protectable w external switch
-      0x0000..=0x1fff => {
-        if !self.cart.chr_ram_mode() {
-          panic!("This cart is not configured for CHR RAM! Legit write?")
-        }
-        self.cart.chr_mut()[address as usize] = val;
-      }
-      0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000] = val,
-      _ => {
+      // 0x0000..=0x1fff => {
+      //   if !self.cart.chr_ram_mode() {
+      //     panic!("This cart is not configured for CHR RAM! Legit write? {:#06x}", address)
+      //   }
+      //   self.cart.chr_mut()[address as usize] = val;
+      // }
+      // 0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000] = val,
+      // _ => {
         // println!("writing to {:#06x}", address);
-        panic!("writing to rom, a test probably finished runnning.");
-      }
-    }
+        // panic!("writing to rom, a test probably finished runnning (fail or pass).");
+      // }
+    // }
   }
 }

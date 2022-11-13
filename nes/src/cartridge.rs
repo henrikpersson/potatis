@@ -3,17 +3,17 @@ use std::{fmt::Display, path::PathBuf};
 use common::kilobytes;
 use crate::error::PotatisError;
 
-const MAGIC: [u8; 4] = [0x4e, 0x45, 0x53, 0x1a];
-const HEADER_SIZE: usize = 16;
+pub const MAGIC: [u8; 4] = [0x4e, 0x45, 0x53, 0x1a];
+pub const HEADER_SIZE: usize = 16;
 const PRG_ROM_BLOCK_SIZE: usize = kilobytes::KB16;
 const CHR_ROM_BLOCK_SIZE: usize = kilobytes::KB8;
 
 #[derive(Debug)]
 #[allow(dead_code)]
-struct Header {
+pub struct Header {
   magic: [u8; 4],
-  prg_rom_size: u8,
-  chr_rom_size: u8,
+  prg_rom_blocks: u8,
+  chr_rom_blocks: u8,
   flags6: u8,
   flags7: u8,
   flags8: u8,
@@ -30,13 +30,14 @@ impl Header {
 
     let magic = &bin[0..4];
     if magic != MAGIC {
+      println!("{:?}", magic);
       return Err(PotatisError::InvalidCartridge("magic"));
     }
 
     Ok(Header {
-      magic: magic.try_into().map_err(|_| PotatisError::InvalidCartridge("magic"))?,
-      prg_rom_size: bin[4],
-      chr_rom_size: bin[5],
+      magic: magic.try_into().map_err(|_| PotatisError::InvalidCartridge("magic 2"))?,
+      prg_rom_blocks: bin[4],
+      chr_rom_blocks: bin[5],
       flags6: bin[6],
       flags7: bin[7],
       flags8: bin[8],
@@ -44,6 +45,10 @@ impl Header {
       flags10: bin[10],
       padding: bin[11..16].try_into().map_err(|_| PotatisError::InvalidCartridge("padding"))?,
     })
+  }
+
+  pub fn total_size_excluding_header(&self) -> usize {
+    (self.prg_rom_blocks as usize * PRG_ROM_BLOCK_SIZE) + (self.chr_rom_blocks as usize * CHR_ROM_BLOCK_SIZE)
   }
 }
 
@@ -78,6 +83,7 @@ pub enum Mirroring {
   FourScreen
 }
 
+#[derive(PartialEq, Eq)]
 pub struct Cartridge {
   mirroring: Mirroring,
   prg_rom: Vec<u8>,
@@ -89,10 +95,10 @@ pub struct Cartridge {
 impl Cartridge {
   pub fn blow_dust(path: PathBuf) -> Result<Cartridge, PotatisError> {
     let bin = std::fs::read(path)?;
-    Self::blow_binary_dust(&bin)
+    Self::load(&bin)
   }
 
-  pub fn blow_binary_dust(bin: &[u8]) -> Result<Cartridge, PotatisError> {
+  pub fn load(bin: &[u8]) -> Result<Cartridge, PotatisError> {
     if bin.len() < HEADER_SIZE + PRG_ROM_BLOCK_SIZE || bin[0..4] != MAGIC {
       return Err(PotatisError::InvalidCartridge("strange size"));
     }
@@ -131,18 +137,18 @@ impl Cartridge {
       mirroring = Mirroring::FourScreen
     }
 
-    let prg_size = (header.prg_rom_size as usize) * PRG_ROM_BLOCK_SIZE; 
+    let prg_size = (header.prg_rom_blocks as usize) * PRG_ROM_BLOCK_SIZE; 
     let prg_start = HEADER_SIZE;
     let prg_end = prg_start + prg_size;
     let prg_rom = bin[prg_start..prg_end].to_vec();
 
     let mut uses_chr_ram = false;
-    let chr_rom = if header.chr_rom_size == 0 {
+    let chr_rom = if header.chr_rom_blocks == 0 {
       uses_chr_ram = true;
       vec![0; CHR_ROM_BLOCK_SIZE]
     } else {
       let chr_start = prg_end;
-      let chr_size = (header.chr_rom_size as usize) * CHR_ROM_BLOCK_SIZE;
+      let chr_size = (header.chr_rom_blocks as usize) * CHR_ROM_BLOCK_SIZE;
       bin[chr_start..(chr_start + chr_size)].to_vec()
     };
     
@@ -193,11 +199,25 @@ impl Cartridge {
 
 impl Display for Cartridge {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let rom_or_ram = if self.uses_chr_ram { "RAM" } else { "ROM" };
+    let chr_ram_or_rom = if self.chr_ram_mode() { " RAM" } else { "" };
     write!(f, 
-      "Mapper: {:?}, Mirroring: {:?}, CHR {}: {}K, PRG: {}K", 
-      self.mapper, self.mirroring, rom_or_ram, self.chr_rom.len(), self.prg().len()
+      "Mapper: {:?}, Mirroring: {:?}, CHR{}: {}x{}K, PRG: {}x{}K", 
+      self.mapper, self.mirroring, chr_ram_or_rom,
+      self.chr().len() / CHR_ROM_BLOCK_SIZE, CHR_ROM_BLOCK_SIZE / 1000,
+      self.prg().len() / PRG_ROM_BLOCK_SIZE, PRG_ROM_BLOCK_SIZE / 1000
     )
+  }
+}
+
+impl std::fmt::Debug for Cartridge {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("Cartridge")
+      .field("mirroring", &self.mirroring)
+      .field("prg_rom", &"...")
+      .field("chr_rom", &"...")
+      .field("mapper", &self.mapper)
+      .field("uses_chr_ram", &self.uses_chr_ram)
+      .finish()
   }
 }
 
@@ -205,8 +225,36 @@ impl Display for Cartridge {
 mod tests {
   use super::Cartridge;
 
+  fn assert_cart(r: &[u8], s: &str) {
+    assert_eq!(Cartridge::load(r).unwrap().to_string(), s);
+  }
+
   #[test]
-  fn invalid_len() {
-    assert!(Cartridge::blow_binary_dust(&[1, 2, 3]).is_err())
+  fn cart_invalid_len() {
+    assert!(Cartridge::load(&[b'N', b'E', b'S']).is_err())
+  }
+
+  #[test]
+  fn cart_valid_nrom() {
+    assert_cart(
+    include_bytes!("../../test-roms/nestest/nestest.nes"),
+    "Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K"
+  ) ;
+  }
+
+  #[test]
+  fn cart_valid_mmc1() {
+    assert_cart(
+      include_bytes!("../../test-roms/nes-test-roms/instr_test-v5/official_only.nes"),
+      "Mapper: Mmc1, Mirroring: Vertical, CHR RAM: 1x8K, PRG: 16x16K"
+    );
+  }
+
+  #[test]
+  fn cart_valid_nrom_chr_ram() {
+    assert_cart(
+      include_bytes!("../../test-roms/nes-test-roms/blargg_ppu_tests_2005.09.15b/vram_access.nes"),
+      "Mapper: Nrom, Mirroring: Horizontal, CHR RAM: 1x8K, PRG: 1x16K"
+    );
   }
 }

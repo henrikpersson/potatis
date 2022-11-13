@@ -160,6 +160,10 @@ impl Debugger {
     self.suspended = true;
   }
 
+  pub fn last_opcode(&self) -> u8 {
+    self.backtrace.back().unwrap().opbyte
+  }
+
   fn suspend(&mut self, cpu: &Cpu, address: u16) {
     self.suspended = true;
     if !self.verbose {

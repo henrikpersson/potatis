@@ -13,6 +13,29 @@ pub mod cartridge;
 pub mod nes;
 pub mod joypad;
 
+pub mod trace {
+  #[derive(Debug)]
+  pub enum Tag { PpuTiming, Cpu }
+
+  impl std::fmt::Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "{:?}", self)
+    }
+  }
+
+  #[macro_export]
+  macro_rules! trace {
+    ($enum:ident::$variant:ident, $($t:tt)*) => {{
+      if let Ok(env) = std::env::var("TRACE_TAG") {
+        let st: String = $crate::trace::Tag::$variant.to_string();
+        if st == env {
+          eprintln!($($t)*);
+        }
+      }
+    }};
+  }
+}
+
 pub mod error {
   #[derive(Debug)]
   pub enum PotatisError {

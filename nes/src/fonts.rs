@@ -115,7 +115,7 @@ pub fn draw(s: &str, pos: (usize, usize), frame: &mut RenderFrame) {
           x = char_base_x;
         },
         '.' => {
-          frame.set_pixel(x, y, (0xff, 0, 0));
+          frame.set_pixel_xy(x, y, (0xff, 0, 0));
           x += 1;
         }
         ' ' => x += 1,

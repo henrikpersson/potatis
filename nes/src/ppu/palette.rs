@@ -1,3 +1,82 @@
+const PALETTE_SIZE: usize = 32;
+
+// AKA boot palette?
+pub const BLARRG_PALETTE: [u8; PALETTE_SIZE] = [
+  0x09,0x01,0x00,0x01,
+  0x00,0x02,0x02,0x0D,
+  0x08,0x10,0x08,0x24,
+  0x00,0x00,0x04,0x2C,
+  0x09,0x01,0x34,0x03,
+  0x00,0x04,0x00,0x14,
+  0x08,0x3A,0x00,0x02,
+  0x00,0x20,0x2C,0x08
+];
+
+pub struct Palette {
+  data: [u8; PALETTE_SIZE]
+}
+
+impl Palette {
+  pub fn new() -> Self {
+    Self {
+      data: BLARRG_PALETTE
+    }
+  }
+
+  pub fn write(&mut self, val: u8, address: u16) {
+    let mirrored = Self::mirror(address) as usize;
+    self.data[mirrored % PALETTE_SIZE] = val;
+  }
+
+  pub fn read(&self, address: u16) -> u8 {
+    let mirrored = Self::mirror(address) as usize;
+    self.data[mirrored % PALETTE_SIZE]
+  }
+
+  pub fn rgb_from_index(&self, index: u8) -> (u8, u8, u8) {
+    palette_to_rgb(self.data[index as usize])
+  }
+
+  // 0x3f00..=0x3fff
+  fn mirror(address: u16) -> u16 {
+    // PPU mem layout mirroring
+    let mirrored = match address {
+      0x3f00..=0x3f1f => address,
+      0x3f20..=0x3fff => 0x3f00 + (address % PALETTE_SIZE as u16),
+      _ => panic!("invalid palette address: {:#06x}", address)
+    };
+    
+    // Special palette crap: Addresses $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C
+    match mirrored {
+      0x3f10 => 0x3f00,
+      0x3f14 => 0x3f04,
+      0x3f18 => 0x3f08,
+      0x3f1c => 0x3f0c,
+      _ => mirrored
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::ppu::palette::Palette;
+
+  #[test]
+  fn palette_mirror() {
+    assert_eq!(Palette::mirror(0x3f00), 0x3f00);
+    assert_eq!(Palette::mirror(0x3f1f), 0x3f1f);
+    assert_eq!(Palette::mirror(0x3f20), 0x3f00);
+    assert_eq!(Palette::mirror(0x3fff), 0x3f1f);
+    assert_eq!(Palette::mirror(0x3f21), 0x3f01);
+    assert_eq!(Palette::mirror(0x3f40), 0x3f00);
+
+    assert_eq!(Palette::mirror(0x3f10), 0x3f00);
+    assert_eq!(Palette::mirror(0x3f14), 0x3f04);
+    assert_eq!(Palette::mirror(0x3f18), 0x3f08);
+    assert_eq!(Palette::mirror(0x3f1c), 0x3f0c);
+  }
+}
+
 // https://www.nesdev.org/wiki/PPU_palettes
 pub fn palette_to_rgb(value: u8) -> (u8, u8, u8) {
   match value {

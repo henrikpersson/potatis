@@ -11,19 +11,16 @@ impl RenderFrame {
     RenderFrame { pixels: [0; W * H * BYTES_PER_PIXEL] }
   }
 
-  pub fn set_pixel(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
-    let row = y * W * BYTES_PER_PIXEL;
-    let col = x * BYTES_PER_PIXEL; 
-    let i = row + col;
+  pub fn set_pixel_xy(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
+    self.set_pixel((y * W) + x, rgb)
+  }
 
-    if i + BYTES_PER_PIXEL < self.pixels.len() {
-      // let pixel = &mut self.pixels[start..start+3];
-      // pixel.copy_from_slice(&[rgb.0, rgb.1, rgb.2]);
-      self.pixels[i] = rgb.0;
-      self.pixels[i + 1] = rgb.1;
-      self.pixels[i + 2] = rgb.2;
-      self.pixels[i + 3] = 0xff;
-    }
+  pub fn set_pixel(&mut self, i: usize, rgb: (u8, u8, u8)) {
+    let i = i * BYTES_PER_PIXEL;
+    self.pixels[i] = rgb.0;
+    self.pixels[i + 1] = rgb.1;
+    self.pixels[i + 2] = rgb.2;
+    self.pixels[i + 3] = 0xff;
   }
 
   pub fn pixels(&self) -> &[u8] {
