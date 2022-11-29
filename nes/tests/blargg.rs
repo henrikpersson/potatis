@@ -54,6 +54,11 @@ fn branch_timing() {
 }
 
 #[test]
+fn palette_ram() {
+  run_blargg_test("blargg_ppu_tests_2005.09.15b/palette_ram.nes", PassCond::Pc(0xe0eb));
+}
+
+#[test]
 #[ignore = "impl ppu, mapper 3"]
 fn ppu_read_buffer() {
   run_blargg_test("ppu_read_buffer/test_ppu_read_buffer.nes", PassCond::Status("dunno", STATUS_SUCCESS));

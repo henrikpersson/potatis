@@ -371,6 +371,24 @@ impl PPU {
     mapped_address - 0x2000
   }
 
+  fn mirror_palette(address: u16) -> u16 {
+    // PPU mem layout mirroring
+    let mirrored = match address {
+      0x3f00..=0x3f1f => address,
+      0x3f20..=0x3fff => 0x3f00 + (address % PALETTE_SIZE as u16),
+      _ => panic!("invalid palette address: {:#06x}", address)
+    };
+    
+    // Special palette crap: Addresses $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C
+    match mirrored {
+      0x3f10 => 0x3f00,
+      0x3f14 => 0x3f04,
+      0x3f18 => 0x3f08,
+      0x3f1c => 0x3f0c,
+      _ => mirrored
+    }
+  }
+
   fn internal_read(&self, address: u16) -> u8 {
     match address {
       0x0000..=0x1fff => self.rom_mapper.borrow().read8(address), // CHR
@@ -378,8 +396,8 @@ impl PPU {
       0x3000..=0x3eff => self.vram[Self::mirror_vram(&self.vram_mirroring, address - 0x1000) as usize], // -0x1000 because mirror_vram expects base 0x2000
       0x3f00..=0x3fff => {
         // Palette incl mirrors
-        let i = address as usize % PALETTE_SIZE;
-        self.palettes[i]
+        let mirrored = Self::mirror_palette(address) as usize;
+        self.palettes[mirrored % PALETTE_SIZE]
       },
       _  => 0
     }
@@ -392,8 +410,8 @@ impl PPU {
       0x3000..=0x3eff => self.vram[Self::mirror_vram(&self.vram_mirroring, address - 0x1000) as usize] = val, // -0x1000 because mirror_vram expects base 0x2000
       0x3f00..=0x3fff => {
         // Palette incl mirrors
-        let i = address as usize % PALETTE_SIZE;
-        self.palettes[i] = val;
+        let mirrored = Self::mirror_palette(address) as usize;
+        self.palettes[mirrored % PALETTE_SIZE] = val;
       },
       _  => ()
     }
@@ -405,6 +423,21 @@ impl PPU {
 mod tests {
   use crate::cartridge::Mirroring;
   use super::PPU;
+
+  #[test]
+  fn palette_mirror() {
+    assert_eq!(PPU::mirror_palette(0x3f00), 0x3f00);
+    assert_eq!(PPU::mirror_palette(0x3f1f), 0x3f1f);
+    assert_eq!(PPU::mirror_palette(0x3f20), 0x3f00);
+    assert_eq!(PPU::mirror_palette(0x3fff), 0x3f1f);
+    assert_eq!(PPU::mirror_palette(0x3f21), 0x3f01);
+    assert_eq!(PPU::mirror_palette(0x3f40), 0x3f00);
+
+    assert_eq!(PPU::mirror_palette(0x3f10), 0x3f00);
+    assert_eq!(PPU::mirror_palette(0x3f14), 0x3f04);
+    assert_eq!(PPU::mirror_palette(0x3f18), 0x3f08);
+    assert_eq!(PPU::mirror_palette(0x3f1c), 0x3f0c);
+  }
 
   #[test]
   fn vram_mirror() {
