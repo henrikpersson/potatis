@@ -1,22 +1,28 @@
+use std::{rc::Rc, cell::RefCell};
+
 use common::kilobytes;
 
-use crate::cartridge::Mirroring;
+use crate::{cartridge::Mirroring, mappers::Mapper};
 
 pub(crate) struct Vram {
   nametables: [[u8; kilobytes::KB1]; 2], // AKA CIRAM
-  mirroring: Mirroring,
+  mapper: Rc<RefCell<dyn Mapper>>,
 }
 
 impl Vram {
-  pub fn new(mirroring: Mirroring) -> Self {
-    Self { nametables: [[0; kilobytes::KB1]; 2], mirroring }
+  pub fn new(mapper: Rc<RefCell<dyn Mapper>>) -> Self {
+    Self { nametables: [[0; kilobytes::KB1]; 2], mapper }
+  }
+
+  pub fn mode(&self) -> Mirroring {
+    self.mapper.borrow().mirroring()
   }
 
   pub fn read(&self, address: u16) -> u8 {
     assert!((0x2000..=0x2fff).contains(&address), "Invalid vram read: {:#06x}", address);
 
     let virtual_index = Self::get_virtual_nametable_index(address);
-    let index = Self::map(&self.mirroring, virtual_index);
+    let index = Self::map(&self.mode(), virtual_index);
     let offset = address & 0x3ff; // Only lower 9 bits, higher are indexing
     self.nametables[index][offset as usize]
   }
@@ -25,13 +31,13 @@ impl Vram {
     assert!((0x2000..=0x2fff).contains(&address), "Invalid vram write: {:#06x}", address);
 
     let virtual_index = Self::get_virtual_nametable_index(address);
-    let index = Self::map(&self.mirroring, virtual_index);
+    let index = Self::map(&self.mode(), virtual_index);
     let offset = address & 0x3ff; // Only lower 9 bits, higher are indexing
     self.nametables[index][offset as usize] = val;
   }
 
   pub fn read_indexed(&self, virtual_index: u16, offset: u16) -> u8 {
-    let index = Self::map(&self.mirroring, virtual_index);
+    let index = Self::map(&self.mode(), virtual_index);
     self.nametables[index][offset as usize]
   }
 
@@ -57,6 +63,8 @@ impl Vram {
       (Mirroring::Horizontal, 1) => 0,
       (Mirroring::Horizontal, 2) => 1,
       (Mirroring::Horizontal, 3) => 1,
+      (Mirroring::SingleScreenLower, _) => 0,
+      (Mirroring::SingleScreenUpper, _) => 1,
       _ => panic!("nametable mirroring? {} {:?}", virtual_index, mode),
     };
 

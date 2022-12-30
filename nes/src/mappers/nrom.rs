@@ -5,11 +5,10 @@ use mos6502::memory::Bus;
 
 use crate::cartridge::Cartridge;
 
+use super::Mapper;
+
 pub struct NROM {
   cart: Cartridge,
-
-  // prg_rom: &'a [u8],
-  // chr_rom: Vec<u8>,
   prg_ram: [u8; kilobytes::KB8],
   is_16kb: bool
 }
@@ -26,6 +25,12 @@ impl NROM {
       prg_ram: [0; kilobytes::KB8], 
       is_16kb 
     }
+  }
+}
+
+impl Mapper for NROM {
+  fn mirroring(&self) -> crate::cartridge::Mirroring {
+    self.cart.mirroring()
   }
 }
 
@@ -51,20 +56,7 @@ impl Bus for NROM {
     }
   }
 
-  fn write8(&mut self, val: u8, address: u16) {
-    // match address {
-      // TODO: Mirrored, Write protectable w external switch
-      // 0x0000..=0x1fff => {
-      //   if !self.cart.chr_ram_mode() {
-      //     panic!("This cart is not configured for CHR RAM! Legit write? {:#06x}", address)
-      //   }
-      //   self.cart.chr_mut()[address as usize] = val;
-      // }
-      // 0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000] = val,
-      // _ => {
-        // println!("writing to {:#06x}", address);
-        // panic!("writing to rom, a test probably finished runnning (fail or pass).");
-      // }
-    // }
+  fn write8(&mut self, _: u8, _: u16) {
+    
   }
 }

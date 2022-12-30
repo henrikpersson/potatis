@@ -52,10 +52,9 @@ pub struct Nes {
 
 impl Nes {
   pub fn insert<H : HostSystem + 'static>(cartridge: Cartridge, host: H) -> Self {
-    let mirroring = cartridge.mirroring();
     let rom_mapper = crate::mappers::for_cart(cartridge);
 
-    let ppu = Rc::new(RefCell::new(Ppu::new(rom_mapper.clone(), mirroring)));
+    let ppu = Rc::new(RefCell::new(Ppu::new(rom_mapper.clone())));
     let joypad = Rc::new(RefCell::new(Joypad::default()));
     let bus = NesBus::new(rom_mapper.clone(), ppu.clone(), joypad.clone());
 

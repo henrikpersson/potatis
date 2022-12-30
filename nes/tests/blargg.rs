@@ -68,7 +68,7 @@ fn palette_ram() {
 // }
 
 #[test]
-#[ignore = "impl ppu, mapper 3"]
+//#[ignore = "impl ppu, mapper 3"]
 fn ppu_read_buffer() {
   run_blargg_test("ppu_read_buffer/test_ppu_read_buffer.nes", PassCond::Status("dunno", STATUS_SUCCESS));
 }

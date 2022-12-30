@@ -1,7 +1,7 @@
 
 use std::{cell::{RefCell}, rc::Rc};
 use mos6502::memory::Bus;
-use crate::{cartridge::Mirroring, frame::RenderFrame, trace, ppu::state::{Phase, Rendering}};
+use crate::{cartridge::Mirroring, frame::RenderFrame, trace, ppu::state::{Phase, Rendering}, mappers::Mapper};
 use super::{palette::Palette, vram::Vram, state::State};
 
 #[derive(Default, Clone, Copy)]
@@ -39,7 +39,7 @@ pub enum TickEvent { Nothing, EnteredVblank }
 #[allow(dead_code)]
 pub struct Ppu {
   vram: Vram,
-  rom_mapper: Rc<RefCell<dyn Bus>>,
+  rom_mapper: Rc<RefCell<dyn Mapper>>,
   palette: Palette,
   frame: RenderFrame,
   state: State,
@@ -73,9 +73,9 @@ pub struct Ppu {
 
 #[allow(dead_code)]
 impl Ppu {
-  pub fn new(mapper: Rc<RefCell<dyn Bus>>, mirroring: Mirroring) -> Ppu {
+  pub fn new(mapper: Rc<RefCell<dyn Mapper>>) -> Ppu {
     Ppu {
-      vram: Vram::new(mirroring),
+      vram: Vram::new(mapper.clone()),
       rom_mapper: mapper,
       palette: Palette::new(),
       frame: RenderFrame::default(),

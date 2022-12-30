@@ -56,21 +56,21 @@ impl Header {
 enum Format { Nes2, Ines }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Mapper {
+pub enum MapperType {
   Nrom = 0,
   Mmc1 = 1,
   Mapper3 = 3,
 }
 
-impl TryFrom<&Header> for Mapper {
+impl TryFrom<&Header> for MapperType {
   type Error = PotatisError;
 
   fn try_from(header: &Header) -> Result<Self, Self::Error> {
     let id: u8 = (header.flags7 & 0xf0) | header.flags6 >> 4;
     match id {
-      0 => Ok(Mapper::Nrom),
-      1 => Ok(Mapper::Mmc1),
-      3 => Ok(Mapper::Mapper3),
+      0 => Ok(MapperType::Nrom),
+      1 => Ok(MapperType::Mmc1),
+      3 => Ok(MapperType::Mapper3),
       _ => Err(PotatisError::NotYetImplemented(format!("Mapper {}", id)))
     }
   }
@@ -80,7 +80,9 @@ impl TryFrom<&Header> for Mapper {
 pub enum Mirroring {
   Horizontal,
   Vertical,
-  FourScreen
+  FourScreen,
+  SingleScreenUpper,
+  SingleScreenLower,
 }
 
 #[derive(PartialEq, Eq)]
@@ -88,7 +90,7 @@ pub struct Cartridge {
   mirroring: Mirroring,
   prg_rom: Vec<u8>,
   chr_rom: Vec<u8>,
-  mapper: Mapper,
+  mapper: MapperType,
   uses_chr_ram: bool,
 }
 
@@ -113,7 +115,7 @@ impl Cartridge {
       return Err(PotatisError::NotYetImplemented("NES 2.0".into()));
     }
     
-    let mapper = Mapper::try_from(&header)?;
+    let mapper = MapperType::try_from(&header)?;
 
     let skip_trainer = header.flags6 & 0b100 != 0;
     if skip_trainer || (header.flags6 & (1 << 3)) != 0 {
@@ -121,7 +123,7 @@ impl Cartridge {
     }
 
     if header.flags6 & 0b10 != 0 {
-      return Err(PotatisError::NotYetImplemented("PRG RAM".into()));
+      return Err(PotatisError::NotYetImplemented("Cartridge contains battery-backed PRG RAM ($6000-7FFF) or other persistent memory".into()));
     }
 
     if header.flags6 & 0b1000 != 0 {
@@ -177,7 +179,7 @@ impl Cartridge {
     &mut self.chr_rom
   }
 
-  pub fn mapper(&self) -> Mapper {
+  pub fn mapper_type(&self) -> MapperType {
     self.mapper
   }
 
@@ -191,7 +193,7 @@ impl Cartridge {
       prg_rom: prg_rom.to_vec(),
       chr_rom: chr_rom.to_vec(),
       mirroring: Mirroring::Vertical,
-      mapper: Mapper::Nrom,
+      mapper: MapperType::Nrom,
       uses_chr_ram: false,
     }
   }

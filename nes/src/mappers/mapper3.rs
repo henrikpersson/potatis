@@ -3,6 +3,8 @@ use mos6502::memory::Bus;
 
 use crate::cartridge::Cartridge;
 
+use super::Mapper;
+
 const BANK_SIZE: usize = kilobytes::KB8;
 
 // AKA CNROM
@@ -30,6 +32,12 @@ impl Mapper3 {
       is_16kb,
       ram_for_integration_test: [0; kilobytes::KB32]
     }
+  }
+}
+
+impl Mapper for Mapper3 {
+  fn mirroring(&self) -> crate::cartridge::Mirroring {
+    todo!()
   }
 }
 

@@ -3,12 +3,12 @@ use std::{rc::Rc, cell::RefCell};
 use common::kilobytes;
 use mos6502::memory::Bus;
 
-use crate::{ppu::ppu::Ppu, joypad::Joypad};
+use crate::{ppu::ppu::Ppu, joypad::Joypad, mappers::Mapper};
 
 
 pub struct NesBus {
   ram: [u8; kilobytes::KB2],
-  rom: Rc<RefCell<dyn Bus>>,
+  rom: Rc<RefCell<dyn Mapper>>,
   ppu: Rc<RefCell<Ppu>>,
   joypad: Rc<RefCell<Joypad>>
 }
@@ -25,7 +25,7 @@ enum MappedDevice {
 }
 
 impl NesBus {
-  pub fn new(rom: Rc<RefCell<dyn Bus>>, ppu: Rc<RefCell<Ppu>>, joypad: Rc<RefCell<Joypad>>) -> Self {
+  pub fn new(rom: Rc<RefCell<dyn Mapper>>, ppu: Rc<RefCell<Ppu>>, joypad: Rc<RefCell<Joypad>>) -> Self {
     Self { 
       rom,
       ram: [0; kilobytes::KB2],
