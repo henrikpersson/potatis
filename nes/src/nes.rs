@@ -3,11 +3,11 @@ use std::{rc::Rc, cell::RefCell, time::{Instant, Duration}};
 use mos6502::{mos6502::Mos6502, memory::Bus, cpu::{Cpu, Reg}, debugger::Debugger};
 use crate::{cartridge::Cartridge, nesbus::NesBus, ppu::{ppu::{Ppu, TickEvent}}, joypad::Joypad, frame::RenderFrame, fonts, trace};
 
-const SHOW_FPS: bool = true;
 const DEFAULT_FPS_MAX: usize = 60;
 
 lazy_static! {
   static ref TIME: Instant = Instant::now();
+  static ref SHOW_FPS: bool = std::env::var("SHOW_FPS").is_ok();
 }
 
 #[derive(PartialEq, Eq)]
@@ -92,7 +92,7 @@ impl Nes {
     if ppu_event == TickEvent::EnteredVblank {
       trace!(Tag::PpuTiming, "==VBLANK==");
 
-      if SHOW_FPS {
+      if *SHOW_FPS {
         let fps = self.timing.fps_avg(self.host.elapsed_millis());
         fonts::draw(fps.to_string().as_str(), (10, 10), ppu.frame_mut());
       }

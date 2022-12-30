@@ -1,7 +1,6 @@
 
 use std::{cell::{RefCell}, rc::Rc};
-use mos6502::memory::Bus;
-use crate::{cartridge::Mirroring, frame::RenderFrame, trace, ppu::state::{Phase, Rendering}, mappers::Mapper};
+use crate::{frame::RenderFrame, trace, ppu::state::{Phase, Rendering}, mappers::Mapper};
 use super::{palette::Palette, vram::Vram, state::State};
 
 #[derive(Default, Clone, Copy)]
@@ -61,6 +60,7 @@ pub struct Ppu {
 
   vram_addr_inc: u8,
   sprite_table_address_8: u16,
+  sprite_size_16: bool,
   background_table_address: u16,
   nmi_at_start_of_vblank: bool,
 
@@ -98,6 +98,7 @@ impl Ppu {
 
       vram_addr_inc: 0,
       sprite_table_address_8: 0x0000,
+      sprite_size_16: false,
       background_table_address: 0x0000,
       nmi_at_start_of_vblank: false,
 
@@ -156,9 +157,7 @@ impl Ppu {
         self.vram_addr_inc = if val & 0x04 == 0x04 { 32 } else { 1 };
         self.sprite_table_address_8 = if val & 0x08 == 0x08 { 0x1000 } else { 0x0000 };
         self.background_table_address = if val & 0x10 == 0x10 { 0x1000 } else { 0x0000 };
-        if val & 0x20 != 0 {
-          todo!("Implement 8x16 sprites");
-        }
+        self.sprite_size_16 = val & 0x20 == 0x20;
         self.nmi_at_start_of_vblank = (val & 0x80) == 0x80;
 
         // t: ...GH.. ........ <- d: ......GH
@@ -363,8 +362,7 @@ impl Ppu {
     // Clear current sprites
     self.sprites = [None; 8];
 
-    let sprite_table = self.sprite_table_address_8;
-    let sprite_height = 8u8; // TODO 16 height sprites from ctrl
+    let sprite_height = if self.sprite_size_16 { 16 } else { 8 };
     let next_line = self.state.scanline() as u8 + 1;
     let mut sprite_n = 0;
 
@@ -377,28 +375,40 @@ impl Ppu {
         continue;
       }
 
-      let y = self.oam[sprite_addr] + 1;
-      if next_line >= y && next_line < (y + sprite_height) {
+      let sprite_y = self.oam[sprite_addr] + 1;
+      if next_line >= sprite_y && next_line < (sprite_y + sprite_height) {
         if sprite_n >= 8 {
           self.sprite_overflow = true;
           break;
         }
 
-        let number = self.oam[sprite_addr + 1];
+        let (sprite_table, number) = if self.sprite_size_16 {
+          let number = self.oam[sprite_addr + 1];
+          let sprite_table_address_16 = if number & 1 == 1 { 0x1000 } else { 0x0000 };
+          (sprite_table_address_16, number >> 1)
+        } else {
+          (self.sprite_table_address_8, self.oam[sprite_addr + 1])
+        };
+
         let attr = self.oam[sprite_addr + 2];
         let x = self.oam[sprite_addr + 3];
         
         let vflip = (attr & 0x80) == 0x80;
         let tile_row = match vflip {
-          true => sprite_height - 1 - (next_line - y),
-          false => next_line - y,
+          true => sprite_height - 1 - (next_line - sprite_y),
+          false => next_line - sprite_y,
         };
 
-        let index = number as u16 * 16 + tile_row as u16;
+        let index = if self.sprite_size_16 {
+          let bottom = if tile_row > 7 { 8 } else { 0 };
+          number as u16 * 32 + tile_row as u16 + bottom
+        } else {
+          number as u16 * 16 + tile_row as u16
+        };
+
         let address = sprite_table + index;
         let first_plane = self.read_chr_rom(address);
         let second_plane = self.read_chr_rom(address + 8);
-
 
         // Read pixels for sprite row
         let mut pixels = [0u8; 8];
@@ -432,7 +442,8 @@ impl Ppu {
       self.oam[self.oam_address as usize] = *byte;
       self.oam_address = self.oam_address.wrapping_add(1);
     }
-    assert!(self.oam_address == 0x0000);
+    // assert!(self.oam_address == 0x0000);
+    self.oam_address = 0;
 
     trace!(Tag::PpuTiming, "DMA_TICK: {}", self.state.even_frame());
     if self.state.even_frame() {

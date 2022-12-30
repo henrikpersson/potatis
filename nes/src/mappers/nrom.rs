@@ -52,7 +52,7 @@ impl Bus for NROM {
           self.cart.prg()[kilobytes::KB16 + (address as usize - 0xc000)]
         }
       }
-      _ => panic!("unknown NROM memory range: {:#06x}", address)
+      _ => 0//panic!("unknown NROM memory range: {:#06x}", address)
     }
   }
 

@@ -221,7 +221,8 @@ impl Bus for MMC1 {
       0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000],
       0x8000..=0xbfff => self.lower_prg_bank()[address as usize - 0x8000],
       0xc000..=0xffff => self.upper_prg_bank()[address as usize - 0xc000],
-      _ => panic!("unknown mmc1 memory range") // TODO: In most mappers, banks past the end of PRG or CHR ROM show up as mirrors of earlier banks.
+      // TODO: In most mappers, banks past the end of PRG or CHR ROM show up as mirrors of earlier banks.
+      _ => panic!("unknown mmc1 memory range")
     }
   }
 
@@ -230,12 +231,11 @@ impl Bus for MMC1 {
     match address {
       // PPU
       0x0000..=0x1fff => self.write_chr_ram(val, address),
-      // 0x1000..=0x1fff => self.upper_chr_bank().borrow_mut()[address as usize - 0x1000] = val,
 
       // CPU
       0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000] = val,
       0x8000..=0xffff => self.write_to_shift_register(val, address),
-      _ => panic!("writing to rom")
+      _ => () //panic!("writing to rom: {:#06x}", address)
     }
   }
 }

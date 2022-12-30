@@ -145,7 +145,7 @@ pub fn palette_to_rgb(value: u8) -> (u8, u8, u8) {
       0x3e => (0,    0,    0),
       0x3f => (0,    0,    0),
       _ => {
-          println!("eh");
+          // println!("eh");
           (0, 0, 0)
       }
   }

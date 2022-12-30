@@ -1,6 +1,7 @@
 # 🥔 Potatis
 
-<img width="400" alt="pm" src="screenshots/dk.png"><img width="400" alt="dk" src="screenshots/pm.png">
+<img width="400" alt="smb" src="screenshots/smb.png"><img width="400" alt="z" src="screenshots/z.png">
+<img width="400" alt="bb" src="screenshots/bb.png"><img width="400" alt="dr" src="screenshots/dr.png">
 
 - `/mos6502` - Generic CPU emulator. Passes all tests, including illegal ops. (No BCD mode).
 - `/nes` - A very incomplete NES emulator.
@@ -35,12 +36,10 @@ debugger.watch_memory_range(0x6004..=0x6104, |mem| {
 
 ## /nes ⚠️ WIP ⚠️
 
-No scrolling support, so only non-scrolling games like Donkey Kong and Pac-Man "works". Still a lot of glitches, the PPU is a mess!!
-
 Supported mappers:
 - NROM (mapper 0)
 - CNROM (mapper 3)
-- MMC3 (mapper 4) (not complete)
+- MMC3 (mapper 4)
 
 ```rust
 impl nes::HostSystem for MyHost {
@@ -84,11 +83,8 @@ Run all unit and integration tests (for all crates):
 
 # TODO
 
-- Fix PPU
-- Implement scrolling
 - More mappers
 - APU
-- ~~WASM target~~
 
 # Thanks
 - https://www.masswerk.at/6502/6502_instruction_set.html

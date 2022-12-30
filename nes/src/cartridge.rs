@@ -122,9 +122,9 @@ impl Cartridge {
       return Err(PotatisError::NotYetImplemented("Trainer".into()));
     }
 
-    if header.flags6 & 0b10 != 0 {
-      return Err(PotatisError::NotYetImplemented("Cartridge contains battery-backed PRG RAM ($6000-7FFF) or other persistent memory".into()));
-    }
+    // if header.flags6 & 0b10 != 0 {
+    //   return Err(PotatisError::NotYetImplemented("Cartridge contains battery-backed PRG RAM ($6000-7FFF) or other persistent memory".into()));
+    // }
 
     if header.flags6 & 0b1000 != 0 {
       return Err(PotatisError::NotYetImplemented("cartidge fiddles w VRAM address space..".into()));
