@@ -62,9 +62,8 @@ impl HostSystem for SdlHostSystem<'_> {
       match event {
         Event::Quit {..} |
         Event::KeyDown { keycode: Some(Keycode::Q), .. } |
-        Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-          return Shutdown::Yes
-        }
+        Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return Shutdown::Yes,
+        Event::KeyDown { keycode: Some(Keycode::R), .. } => return Shutdown::Reset,
         _ => ()
       }
     }
@@ -86,12 +85,12 @@ fn map_joypad(sdlev: &Event) -> Option<JoypadEvent> {
 
 fn map_button(keycode: &Keycode) -> Option<JoypadButton> {
   match keycode {
-    Keycode::Down => Some(JoypadButton::DOWN),
-    Keycode::Up => Some(JoypadButton::UP),
-    Keycode::Left => Some(JoypadButton::LEFT),
-    Keycode::Right => Some(JoypadButton::RIGHT),
-    Keycode::A => Some(JoypadButton::A),
-    Keycode::B => Some(JoypadButton::B),
+    Keycode::W => Some(JoypadButton::UP),
+    Keycode::A => Some(JoypadButton::LEFT),
+    Keycode::S => Some(JoypadButton::DOWN),
+    Keycode::D => Some(JoypadButton::RIGHT),
+    Keycode::K => Some(JoypadButton::B),
+    Keycode::L => Some(JoypadButton::A),
     Keycode::Return => Some(JoypadButton::START),
     Keycode::Space => Some(JoypadButton::SELECT),
     _ => None

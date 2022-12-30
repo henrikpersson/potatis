@@ -102,6 +102,12 @@ mod tests {
 
   struct TestBus{}
 
+  impl Mapper for TestBus {
+    fn mirroring(&self) -> crate::cartridge::Mirroring {
+      todo!()
+    }
+}
+
   impl Bus for TestBus {
     fn read8(&self, _: u16) -> u8 {
       todo!()
@@ -117,7 +123,7 @@ mod tests {
     let joypad = Joypad::default();
     NesBus::new(
       bus.clone(), 
-      Rc::new(RefCell::new(Ppu::new(bus, crate::cartridge::Mirroring::FourScreen))),
+      Rc::new(RefCell::new(Ppu::new(bus))),
       Rc::new(RefCell::new(joypad))
     )
   }

@@ -5,7 +5,8 @@
   "scripts": {
     "build": "wasm-pack build --release --target web",
     "dev": "snowpack dev",
-    "clean": "rm -r node_modules && rm -r pkg"
+    "clean": "rm -r node_modules && rm -r pkg",
+    "deploy": "wasm-pack build --release --target web && snowpack build && cp pkg/nes_wasm_bg.wasm build/snowpack/link/pkg/"
   },
   "dependencies": {
     "nes-wasm": "file:./pkg"

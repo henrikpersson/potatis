@@ -16,5 +16,6 @@ pub mod debugger {
 
   impl Debugger {
     pub fn on_tick(&mut self, _: &Cpu, _: &Instruction) {}
+    pub fn last_opcode(&self) -> u8 { 0 }
   } 
 }

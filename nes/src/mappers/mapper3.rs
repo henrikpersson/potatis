@@ -15,7 +15,8 @@ pub(crate) struct Mapper3 {
 
   // this mapper does not have a ram, but tests put status codes in mem ranges outside of the
   // documented memory map for this mapper. this ram is only used in tests. TODO make better
-  ram_for_integration_test: [u8; kilobytes::KB32]
+  // 0x6000 == Battery Backed Save or Work RAM (map globally in nesbus?)
+  ram_for_integration_test: [u8; kilobytes::KB1]
 }
 
 impl Mapper3 {
@@ -30,14 +31,14 @@ impl Mapper3 {
       cart,
       selected_bank: 0,
       is_16kb,
-      ram_for_integration_test: [0; kilobytes::KB32]
+      ram_for_integration_test: [0; kilobytes::KB1]
     }
   }
 }
 
 impl Mapper for Mapper3 {
   fn mirroring(&self) -> crate::cartridge::Mirroring {
-    todo!()
+    self.cart.mirroring()
   }
 }
 

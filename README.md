@@ -38,8 +38,8 @@ debugger.watch_memory_range(0x6004..=0x6104, |mem| {
 
 Supported mappers:
 - NROM (mapper 0)
+- MMC1 (mapper 1)
 - CNROM (mapper 3)
-- MMC3 (mapper 4)
 
 ```rust
 impl nes::HostSystem for MyHost {
@@ -75,6 +75,8 @@ loop {
 3. `npm install`
 4. `npm run dev`
 
+Try it here: https://henrikpersson.github.io/nes/index.html
+
 # Test
 
 Run all unit and integration tests (for all crates):
@@ -86,7 +88,18 @@ Run all unit and integration tests (for all crates):
 - More mappers
 - APU
 
+# Key mappings
+
+Up, left, down, right: `WASD`
+B: `K`
+A: `L`
+Select: `[Space]`
+Start: `[Enter]`
+Reset: `R`
+
+
 # Thanks
+- nesdev.org
 - https://www.masswerk.at/6502/6502_instruction_set.html
 - https://github.com/amb5l/6502_65C02_functional_tests
 - http://www.baltissen.org/newhtm/ttl6502.htm (TTL6502.bin test)

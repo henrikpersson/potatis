@@ -93,14 +93,15 @@ pub struct NesWasm {
 
 #[wasm_bindgen]
 impl NesWasm {
-  pub fn new(browser: BrowserNes, mut bin: &[u8]) -> Self {
-    if bin.is_empty() {
-      bin = include_bytes!("../../test-roms/nestest/nestest.nes");
-    }
-  
-    let cart = Cartridge::load(bin).unwrap();
-    log(format!("nes init! {}", cart).as_str());
+  pub fn new(browser: BrowserNes, bin: &[u8]) -> Self {
+    let cart = if let Ok(cart) = Cartridge::load(bin) {
+      cart
+    } else {
+      log("ERROR Failed to load. Invalid ROM. Loading nestest instead.");
+      Cartridge::load(include_bytes!("../../test-roms/nestest/nestest.nes")).unwrap()
+    };
 
+    log(format!("nes init! {}", cart).as_str());
     let nes = Nes::insert(cart, WasmHostSystem::new(browser));
     Self { nes }
   }

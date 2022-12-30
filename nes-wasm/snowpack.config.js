@@ -10,6 +10,9 @@ module.exports = {
     '**/*.md',
     '**/target/**',
   ],
+  buildOptions: {
+    metaUrlPath: 'snowpack',
+  },
   devOptions: {
     hmrDelay: 200,
   }

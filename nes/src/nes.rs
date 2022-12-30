@@ -11,7 +11,7 @@ lazy_static! {
 }
 
 #[derive(PartialEq, Eq)]
-pub enum Shutdown { Yes, No }
+pub enum Shutdown { Yes, No, Reset }
 
 impl From<bool> for Shutdown {
   fn from(b: bool) -> Self {
@@ -109,6 +109,11 @@ impl Nes {
         self.machine.cpu_mut().interrupt_nmi();
       }
     }
+
+    if self.shutdown == Shutdown::Reset {
+      self.machine.cpu_mut().reset();
+      self.shutdown = Shutdown::No
+    }
   }
 
   pub fn debugger(&mut self) -> &mut Debugger {
@@ -136,7 +141,7 @@ impl Nes {
   }
 
   pub fn powered_on(&self) -> bool {
-    self.shutdown == Shutdown::No
+    self.shutdown != Shutdown::Yes
   }
 }
 

@@ -1,14 +1,14 @@
 import wasmInit, { NesWasm, KeyState } from "nes-wasm";
 
 const keymap: { [key: string]: number } = {
-  ['a']: 7,
-  ['b']: 6,
+  ['l']: 7,
+  ['k']: 6,
   [' ']: 5,
   ['Enter']: 4,
-  ['ArrowUp']: 3,
-  ['ArrowDown']: 2,
-  ['ArrowLeft']: 1,
-  ['ArrowRight']: 0,
+  ['w']: 3,
+  ['s']: 2,
+  ['a']: 1,
+  ['d']: 0,
 };
 
 export class BrowserNes {
@@ -41,7 +41,7 @@ export class BrowserNes {
       let btn = keymap[ev.key];
       if (btn != null) {
         this.keyboard[btn] = KeyState.Released;
-        console.log(this.keyboard);
+        // console.log(this.keyboard);
 
         // LOL
         setTimeout(() => {
