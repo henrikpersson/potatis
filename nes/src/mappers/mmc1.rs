@@ -222,7 +222,7 @@ impl Bus for MMC1 {
       0x8000..=0xbfff => self.lower_prg_bank()[address as usize - 0x8000],
       0xc000..=0xffff => self.upper_prg_bank()[address as usize - 0xc000],
       // TODO: In most mappers, banks past the end of PRG or CHR ROM show up as mirrors of earlier banks.
-      _ => panic!("unknown mmc1 memory range")
+      _ => 0//panic!("unknown mmc1 memory range")
     }
   }
 

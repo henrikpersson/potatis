@@ -92,6 +92,7 @@ pub struct Cartridge {
   chr_rom: Vec<u8>,
   mapper: MapperType,
   uses_chr_ram: bool,
+  format: Format
 }
 
 impl Cartridge {
@@ -111,9 +112,9 @@ impl Cartridge {
     }
 
     let format = if (header.flags7 & 0x0c) == 0x08 { Format::Nes2 } else { Format::Ines };
-    if format == Format::Nes2 {
-      return Err(PotatisError::NotYetImplemented("NES 2.0".into()));
-    }
+    // if format == Format::Nes2 {
+      // return Err(PotatisError::NotYetImplemented("NES 2.0".into()));
+    // }
     
     let mapper = MapperType::try_from(&header)?;
 
@@ -159,7 +160,8 @@ impl Cartridge {
       chr_rom,
       mirroring,
       mapper,
-      uses_chr_ram
+      uses_chr_ram,
+      format
     })
   }
 
@@ -195,6 +197,7 @@ impl Cartridge {
       mirroring: Mirroring::Vertical,
       mapper: MapperType::Nrom,
       uses_chr_ram: false,
+      format: Format::Ines
     }
   }
 }
@@ -203,8 +206,8 @@ impl Display for Cartridge {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let chr_ram_or_rom = if self.chr_ram_mode() { " RAM" } else { "" };
     write!(f, 
-      "Mapper: {:?}, Mirroring: {:?}, CHR{}: {}x{}K, PRG: {}x{}K", 
-      self.mapper, self.mirroring, chr_ram_or_rom,
+      "[{:?}] Mapper: {:?}, Mirroring: {:?}, CHR{}: {}x{}K, PRG: {}x{}K", 
+      self.format, self.mapper, self.mirroring, chr_ram_or_rom,
       self.chr().len() / CHR_ROM_BLOCK_SIZE, CHR_ROM_BLOCK_SIZE / 1000,
       self.prg().len() / PRG_ROM_BLOCK_SIZE, PRG_ROM_BLOCK_SIZE / 1000
     )
@@ -218,6 +221,7 @@ impl std::fmt::Debug for Cartridge {
       .field("prg_rom", &"...")
       .field("chr_rom", &"...")
       .field("mapper", &self.mapper)
+      .field("format", &self.format)
       .field("uses_chr_ram", &self.uses_chr_ram)
       .finish()
   }
@@ -240,7 +244,7 @@ mod tests {
   fn cart_valid_nrom() {
     assert_cart(
     include_bytes!("../../test-roms/nestest/nestest.nes"),
-    "Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K"
+    "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K"
   ) ;
   }
 
@@ -248,7 +252,7 @@ mod tests {
   fn cart_valid_mmc1() {
     assert_cart(
       include_bytes!("../../test-roms/nes-test-roms/instr_test-v5/official_only.nes"),
-      "Mapper: Mmc1, Mirroring: Vertical, CHR RAM: 1x8K, PRG: 16x16K"
+      "[Ines] Mapper: Mmc1, Mirroring: Vertical, CHR RAM: 1x8K, PRG: 16x16K"
     );
   }
 
@@ -256,7 +260,7 @@ mod tests {
   fn cart_valid_nrom_chr_ram() {
     assert_cart(
       include_bytes!("../../test-roms/nes-test-roms/blargg_ppu_tests_2005.09.15b/vram_access.nes"),
-      "Mapper: Nrom, Mirroring: Horizontal, CHR RAM: 1x8K, PRG: 1x16K"
+      "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR RAM: 1x8K, PRG: 1x16K"
     );
   }
 }
