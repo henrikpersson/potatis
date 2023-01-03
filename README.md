@@ -40,6 +40,7 @@ Supported mappers:
 - NROM (mapper 0)
 - MMC1 (mapper 1)
 - CNROM (mapper 3)
+- MMC3 (mapper 4)
 
 ```rust
 impl nes::HostSystem for MyHost {

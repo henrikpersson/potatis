@@ -458,7 +458,17 @@ impl Cpu {
     self.set_pc(start);
   }
 
-  pub fn interrupt_nmi(&mut self) {
+  pub fn nmi(&mut self) {
+    self.interrupt(Self::NMI_VECTOR);
+  }
+
+  pub fn irq(&mut self) {
+    if self[Flag::I] == 0 {
+      self.interrupt(Self::IRQ_VECTOR);
+    }
+  }
+
+  fn interrupt(&mut self, vector: u16) {
     // TODO: Cycles
     self.push_word(self.pc());
 
@@ -468,9 +478,8 @@ impl Cpu {
     self.push(stackflags);
     self[Flag::I] = 1;
 
-    // Jump to NMI vector, TODO cycles
-    let vector = self.read16(Self::NMI_VECTOR);
-    // println!("NMI interrupt -> {:#06x}", vector);
+    // TODO cycles
+    let vector = self.read16(vector);
     self.set_pc(vector);
   }
 

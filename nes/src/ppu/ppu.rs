@@ -33,7 +33,7 @@ impl From<u16> for Register {
 }
 
 #[derive(PartialEq, Eq)]
-pub enum TickEvent { Nothing, EnteredVblank }
+pub enum TickEvent { Nothing, EnteredVblank, TriggerIrq }
 
 #[allow(dead_code)]
 pub struct Ppu {
@@ -222,6 +222,7 @@ impl Ppu {
 
   pub fn tick(&mut self, ppu_cycles_to_tick: usize) -> TickEvent {
     let vblank_pre_ticks = self.in_vblank;
+    let mut irq = false;
 
     for _ in 0..ppu_cycles_to_tick {
       match self.state.next(self.rendering_enabled) {
@@ -247,6 +248,10 @@ impl Ppu {
           if sprites_visible {
             self.render_sprite_pixel(x, y, bg_pixel_drawn);
           }
+
+          // if !self.show_background && !self.show_sprites {
+          //   self.frame.set_pixel_xy(x, y, self.palette.rgb_from_index(0))
+          // }
         },
         (Phase::Render, 320, _) => {
           // Load sprites for next line (sprite tile loading interval)
@@ -255,6 +260,9 @@ impl Ppu {
           self.load_sprites_for_next_scanline();
         }
         (Phase::EnteringVblank, 1, _) => self.in_vblank = true,
+        (Phase::Render | Phase::PostRender, 260, Rendering::Enabled) => {
+          irq = self.rom_mapper.borrow_mut().irq()
+        },
         _ => (),
       }
 
@@ -267,6 +275,8 @@ impl Ppu {
 
     if !vblank_pre_ticks && self.in_vblank {
       TickEvent::EnteredVblank
+    } else if irq {
+      TickEvent::TriggerIrq
     } else {
       TickEvent::Nothing
     }

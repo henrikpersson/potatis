@@ -106,8 +106,12 @@ impl Nes {
 
       if ppu.nmi_on_vblank() {
         trace!(Tag::PpuTiming, "==NMI==");
-        self.machine.cpu_mut().interrupt_nmi();
+        self.machine.cpu_mut().nmi();
       }
+    }
+
+    if ppu_event == TickEvent::TriggerIrq {
+      self.machine.cpu_mut().irq();
     }
 
     if self.shutdown == Shutdown::Reset {

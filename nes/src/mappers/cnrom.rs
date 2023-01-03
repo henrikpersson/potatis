@@ -7,8 +7,8 @@ use super::Mapper;
 
 const BANK_SIZE: usize = kilobytes::KB8;
 
-// AKA CNROM
-pub(crate) struct Mapper3 {
+// Mapper 3
+pub(crate) struct CNROM { 
   cart: Cartridge,
   selected_bank: usize,
   is_16kb: bool,
@@ -19,7 +19,7 @@ pub(crate) struct Mapper3 {
   ram_for_integration_test: [u8; kilobytes::KB1]
 }
 
-impl Mapper3 {
+impl CNROM {
   pub fn new(cart: Cartridge) -> Self {
     let is_16kb = match cart.prg().len() {
       kilobytes::KB16 => true,
@@ -36,13 +36,13 @@ impl Mapper3 {
   }
 }
 
-impl Mapper for Mapper3 {
+impl Mapper for CNROM {
   fn mirroring(&self) -> crate::cartridge::Mirroring {
     self.cart.mirroring()
   }
 }
 
-impl Bus for Mapper3 {
+impl Bus for CNROM {
   fn read8(&self, address: u16) -> u8 {
     match address {
       0x0000..=0x1fff => self.cart.chr()[(self.selected_bank * BANK_SIZE) + address as usize],
@@ -79,21 +79,21 @@ mod tests {
 
   use crate::cartridge::Cartridge;
 
-  use super::Mapper3;
+  use super::CNROM;
 
   #[test]
   fn test_vectors_at_end() {
     let mut kb32 = [0; kilobytes::KB32];
     kb32[kilobytes::KB32-2..kilobytes::KB32].copy_from_slice(&[0xde, 0xad]);
     let cart = Cartridge::new_test(&kb32, &[]);
-    let mapper = Mapper3::new(cart);
+    let mapper = CNROM::new(cart);
     assert_eq!(mapper.read8(0xfffe), 0xde);
     assert_eq!(mapper.read8(0xffff), 0xad);
 
     let mut kb16 = [0; kilobytes::KB16];
     kb16[kilobytes::KB16-2..kilobytes::KB16].copy_from_slice(&[0xbe, 0xef]);
     let cart = Cartridge::new_test(&kb16, &[]);
-    let mapper = Mapper3::new(cart);
+    let mapper = CNROM::new(cart);
     assert_eq!(mapper.read8(0xfffe), 0xbe);
     assert_eq!(mapper.read8(0xffff), 0xef);
   }

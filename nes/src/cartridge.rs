@@ -59,7 +59,8 @@ enum Format { Nes2, Ines }
 pub enum MapperType {
   Nrom = 0,
   Mmc1 = 1,
-  Mapper3 = 3,
+  Cnrom = 3,
+  Mmc3 = 4,
 }
 
 impl TryFrom<&Header> for MapperType {
@@ -70,7 +71,8 @@ impl TryFrom<&Header> for MapperType {
     match id {
       0 => Ok(MapperType::Nrom),
       1 => Ok(MapperType::Mmc1),
-      3 => Ok(MapperType::Mapper3),
+      3 => Ok(MapperType::Cnrom),
+      4 => Ok(MapperType::Mmc3),
       _ => Err(PotatisError::NotYetImplemented(format!("Mapper {}", id)))
     }
   }
@@ -80,7 +82,7 @@ impl TryFrom<&Header> for MapperType {
 pub enum Mirroring {
   Horizontal,
   Vertical,
-  FourScreen,
+  HardwiredFourScreen,
   SingleScreenUpper,
   SingleScreenLower,
 }
@@ -137,7 +139,7 @@ impl Cartridge {
     };
 
     if header.flags6 & 0b1000 != 0 {
-      mirroring = Mirroring::FourScreen
+      mirroring = Mirroring::HardwiredFourScreen
     }
 
     let prg_size = (header.prg_rom_blocks as usize) * PRG_ROM_BLOCK_SIZE; 

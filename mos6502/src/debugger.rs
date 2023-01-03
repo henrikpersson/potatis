@@ -150,7 +150,7 @@ impl Debugger {
 
   pub fn dump_backtrace(&mut self) {
     println!("...");
-    while let Some(entry) = self.backtrace.pop_front() {
+    for entry in self.backtrace.iter() {
       Debugger::print_instruction(entry.pc, entry.opbyte, &entry.inst);
     }
   }
