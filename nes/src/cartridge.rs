@@ -59,6 +59,7 @@ enum Format { Nes2, Ines }
 pub enum MapperType {
   Nrom = 0,
   Mmc1 = 1,
+  Uxrom = 2,
   Cnrom = 3,
   Mmc3 = 4,
 }
@@ -71,6 +72,7 @@ impl TryFrom<&Header> for MapperType {
     match id {
       0 => Ok(MapperType::Nrom),
       1 => Ok(MapperType::Mmc1),
+      2 => Ok(MapperType::Uxrom),
       3 => Ok(MapperType::Cnrom),
       4 => Ok(MapperType::Mmc3),
       _ => Err(PotatisError::NotYetImplemented(format!("Mapper {}", id)))

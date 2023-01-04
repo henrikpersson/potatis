@@ -39,6 +39,7 @@ debugger.watch_memory_range(0x6004..=0x6104, |mem| {
 Supported mappers:
 - NROM (mapper 0)
 - MMC1 (mapper 1)
+- UxROM (mapper 2)
 - CNROM (mapper 3)
 - MMC3 (mapper 4)
 
