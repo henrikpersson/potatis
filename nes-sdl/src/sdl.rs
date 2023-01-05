@@ -9,30 +9,30 @@ pub struct SdlHostSystem<'a> {
 }
 
 impl SdlHostSystem<'_> {
-  const W: u32 = 256;
-  const H: u32 = 240;
-  
   pub fn new() -> Self {
-    // const scale: f32 = 1.;
+    // TODO: Configurable
+    let scale = 4;
+    let w = nes::display::NTSC_W as u32;
+    let h = nes::display::NTSC_H as u32;
+
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("Potatis", Self::W * 4, Self::H * 4)
-        .position_centered()
-        .build()
-        .unwrap();
+    let window = video_subsystem.window("Potatis", w * scale, h * scale)
+      .position_centered()
+      .build()
+      .unwrap();
 
     let canvas = window.into_canvas()
       .present_vsync()
       .build()
       .unwrap();
-    // canvas.set_scale(4., scale).unwrap();
 
     let mut creator = canvas.texture_creator();
     let texture: Texture = unsafe {
       let ptr = &mut creator as *mut TextureCreator<WindowContext>;
       (*ptr)
-        .create_texture_target(PixelFormatEnum::RGBA32, Self::W, Self::H)
+        .create_texture_target(PixelFormatEnum::RGBA32, w, h)
         .unwrap()
     };
     
@@ -47,7 +47,8 @@ impl SdlHostSystem<'_> {
 
 impl HostSystem for SdlHostSystem<'_> {
   fn render(&mut self, frame: &RenderFrame) {
-    self.texture.update(None, frame.pixels(), frame.pitch()).unwrap();
+    let ntsc = nes::display::ntsc(frame.pixels());
+    self.texture.update(None, &ntsc.pixels, ntsc.pitch).unwrap();
     self.canvas.copy(&self.texture, None, None).unwrap();
     self.canvas.present();
   }

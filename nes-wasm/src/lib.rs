@@ -1,4 +1,4 @@
-use nes::{cartridge::Cartridge, nes::{Nes, HostSystem, Shutdown}, joypad::{JoypadButton, JoypadEvent}};
+use nes::{cartridge::Cartridge, nes::{Nes, HostSystem, Shutdown}, joypad::{JoypadButton, JoypadEvent}, display};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 #[wasm_bindgen]
@@ -40,7 +40,8 @@ struct WasmHostSystem {
 
 impl HostSystem for WasmHostSystem {
   fn render(&mut self, frame: &nes::frame::RenderFrame) {
-    self.browser.on_frame_ready(frame.pixels().as_ptr(), frame.pixels().len());
+    let ntsc = display::ntsc(frame.pixels());
+    self.browser.on_frame_ready(ntsc.pixels.as_ptr(), ntsc.pixels.len());
   }
 
   fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) -> Shutdown {

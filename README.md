@@ -1,6 +1,6 @@
 # 🥔 Potatis
 
-<img width="400" alt="smb" src="screenshots/smb.png"><img width="400" alt="z" src="screenshots/z.png">
+<img width="400" alt="smb" src="screenshots/smb.png"><img width="400" alt="smb3" src="screenshots/smb3.png">
 <img width="400" alt="bb" src="screenshots/bb.png"><img width="400" alt="dr" src="screenshots/dr.png">
 
 - `/mos6502` - Generic CPU emulator. Passes all tests, including illegal ops. (No BCD mode).
@@ -34,7 +34,7 @@ debugger.watch_memory_range(0x6004..=0x6104, |mem| {
 });
 ```
 
-## /nes ⚠️ WIP ⚠️
+## /nes
 
 Supported mappers:
 - NROM (mapper 0)

@@ -61,7 +61,7 @@ export class BrowserNes {
       this.frame_buffer = new Uint8ClampedArray(this.mem.buffer, frame_ptr, len);
     }
 
-    this.ctx.putImageData(new ImageData(this.frame_buffer, 256, 240), 0, 0);
+    this.ctx.putImageData(new ImageData(this.frame_buffer, 240, 224), 0, 0);
     this.frame_ready = true;
   }
 

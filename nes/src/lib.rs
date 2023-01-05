@@ -12,6 +12,7 @@ pub mod frame;
 pub mod cartridge;
 pub mod nes;
 pub mod joypad;
+pub mod display;
 
 pub mod trace {
   #[derive(Debug)]

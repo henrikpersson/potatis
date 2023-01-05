@@ -1,12 +1,13 @@
 pub const W: usize = 256;
 pub const H: usize = 240;
-const BYTES_PER_PIXEL: usize = 4; // 0xRR0xGG0xBBxAA
+pub const BYTES_PER_PIXEL: usize = 4; // 0xRR0xGG0xBBxAA
 
 pub struct RenderFrame {
   pixels: [u8; W * H * BYTES_PER_PIXEL],
 }
 
 impl RenderFrame {
+  #[allow(clippy::should_implement_trait)]
   pub fn default() -> RenderFrame {
     RenderFrame { pixels: [0; W * H * BYTES_PER_PIXEL] }
   }
@@ -24,7 +25,7 @@ impl RenderFrame {
   }
 
   pub fn pixels(&self) -> &[u8] {
-    &self.pixels[..]
+    &self.pixels
   }
 
   pub fn pitch(&self) -> usize {
