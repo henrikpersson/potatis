@@ -248,10 +248,6 @@ impl Ppu {
           if sprites_visible {
             self.render_sprite_pixel(x, y, bg_pixel_drawn);
           }
-
-          // if !self.show_background && !self.show_sprites {
-          //   self.frame.set_pixel_xy(x, y, self.palette.rgb_from_index(0))
-          // }
         },
         (Phase::Render, 320, _) => {
           // Load sprites for next line (sprite tile loading interval)
