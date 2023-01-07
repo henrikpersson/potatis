@@ -41,7 +41,10 @@ struct WasmHostSystem {
 impl HostSystem for WasmHostSystem {
   fn render(&mut self, frame: &nes::frame::RenderFrame) {
     let ntsc = display::ntsc(frame.pixels());
-    self.browser.on_frame_ready(ntsc.pixels.as_ptr(), ntsc.pixels.len());
+    let happy_js: Vec<u8> = ntsc.pixels.chunks_exact(3)
+      .flat_map(|p| [p[0], p[1], p[2], 0xff])
+      .collect();
+    self.browser.on_frame_ready(happy_js.as_ptr(), happy_js.len());
   }
 
   fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) -> Shutdown {

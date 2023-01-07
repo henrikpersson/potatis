@@ -7,6 +7,7 @@
 - `/nes` - A very incomplete NES emulator.
 - `/nes-sdl` - Native target using SDL.
 - `/nes-wasm` - Browser target using WASM.
+- `/nes-android` - Android target using JNI.
 
 ## /mos6502
 
@@ -46,7 +47,7 @@ Supported mappers:
 ```rust
 impl nes::HostSystem for MyHost {
   fn render(&mut self, frame: &RenderFrame) {
-    // frame.pixels() == 256 * 240 * 4 RGBA array
+    // frame.pixels() == 256 * 240 * 3 RGB array
   }
 
   fn poll_events(&mut self, joypad: &mut Joypad) {
@@ -79,6 +80,26 @@ loop {
 
 Try it here: https://henrikpersson.github.io/nes/index.html
 
+## /nes-android
+
+<img height="300" alt="bb" src="screenshots/android.png" align="right">
+
+1. Download Android NDK and `rustup target add [target]`
+2. Configure your target(s) in `~/.cargo/config` with the linker(s) provided by the Android NDK
+```
+[target.aarch64-linux-android]
+linker = "$NDK_PATH/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android33-clang"
+
+[target.armv7-linux-androideabi]
+linker = "$NDK_PATH/toolchains/llvm/prebuilt/darwin-x86_64/bin/armv7a-linux-androideabi30-clang"
+
+[target.x86_64-linux-android]
+linker = "$NDK_PATH/toolchains/llvm/prebuilt/darwin-x86_64/bin/x86_64-linux-android30-clang"
+```
+3. `cd nes-android && ./install.sh release`
+
+_Note: install.sh only targets arm64-v8a (aarch64-linux-android)._
+
 # Test
 
 Run all unit and integration tests (for all crates):
@@ -92,12 +113,12 @@ Run all unit and integration tests (for all crates):
 
 # Key mappings
 
-Up, left, down, right: `WASD`
-B: `K`
-A: `L`
-Select: `[Space]`
-Start: `[Enter]`
-Reset: `R`
+Up, left, down, right: <kbd>WASD</kbd>
+B: <kbd>K</kbd>
+A: <kbd>L</kbd>
+Select: <kbd>SPACE</kbd>
+Start: <kbd>ENTER</kbd>
+Reset: <kbd>R</kbd>
 
 
 # Thanks

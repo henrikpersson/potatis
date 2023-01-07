@@ -32,7 +32,7 @@ impl SdlHostSystem<'_> {
     let texture: Texture = unsafe {
       let ptr = &mut creator as *mut TextureCreator<WindowContext>;
       (*ptr)
-        .create_texture_target(PixelFormatEnum::RGBA32, w, h)
+        .create_texture_target(PixelFormatEnum::RGB24, w, h)
         .unwrap()
     };
     

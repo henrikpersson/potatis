@@ -1,6 +1,6 @@
 pub const W: usize = 256;
 pub const H: usize = 240;
-pub const BYTES_PER_PIXEL: usize = 4; // 0xRR0xGG0xBBxAA
+pub const BYTES_PER_PIXEL: usize = 3; // 0xRR0xGG0xBB
 
 pub struct RenderFrame {
   pixels: [u8; W * H * BYTES_PER_PIXEL],
@@ -21,7 +21,6 @@ impl RenderFrame {
     self.pixels[i] = rgb.0;
     self.pixels[i + 1] = rgb.1;
     self.pixels[i + 2] = rgb.2;
-    self.pixels[i + 3] = 0xff;
   }
 
   pub fn pixels(&self) -> &[u8] {
