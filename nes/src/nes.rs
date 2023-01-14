@@ -1,14 +1,9 @@
-
-use std::{rc::Rc, cell::RefCell, time::{Instant, Duration}};
+use core::{cell::RefCell, time::Duration};
+use alloc::{rc::Rc, boxed::Box, string::ToString};
 use mos6502::{mos6502::Mos6502, memory::Bus, cpu::{Cpu, Reg}, debugger::Debugger};
-use crate::{cartridge::Cartridge, nesbus::NesBus, ppu::{ppu::{Ppu, TickEvent}}, joypad::Joypad, frame::RenderFrame, fonts, trace};
+use crate::{cartridge::{Cartridge, Rom}, nesbus::NesBus, ppu::ppu::{Ppu, TickEvent}, joypad::Joypad, frame::{RenderFrame, PixelFormatRGB888, DisplayRegionNTSC, PixelFormatRGB565, DisplayRegionPAL}, trace, fonts};
 
 const DEFAULT_FPS_MAX: usize = 60;
-
-lazy_static! {
-  static ref TIME: Instant = Instant::now();
-  static ref SHOW_FPS: bool = std::env::var("SHOW_FPS").is_ok();
-}
 
 #[derive(PartialEq, Eq)]
 pub enum Shutdown { Yes, No, Reset }
@@ -19,16 +14,43 @@ impl From<bool> for Shutdown {
   }
 }
 
+#[derive(PartialEq, Default)]
+pub enum HostDisplayRegion { #[default] Ntsc, Pal }
+
+#[derive(PartialEq, Default)]
+pub enum HostPixelFormat { #[default] Rgb888, Rgb565 }
+
 pub trait HostSystem {
   fn render(&mut self, frame: &RenderFrame);
   fn poll_events(&mut self, joypad: &mut Joypad) -> Shutdown;
+
   fn elapsed_millis(&self) -> usize {
-    TIME.elapsed().as_millis() as usize
+    // Not required. Up to platform to implement for FPS control.
+    return 0;
   }
-  fn delay(&self, d: Duration) {
-    // TODO: This should not be a sleep! We still need to poll events, etc. 
-    // No need to suspend EVERYTHING. SDL_Delay?
-    std::thread::sleep(d);
+
+  fn delay(&self, _: Duration) {
+    // Not required. Up to platform to implement for FPS control.
+  }
+
+  fn display_region(&self) -> HostDisplayRegion { HostDisplayRegion::default() }
+  fn pixel_format(&self) -> HostPixelFormat { HostPixelFormat::default() }
+
+  fn alloc_render_frame(&self) -> RenderFrame {
+    match (self.display_region(), self.pixel_format()) {
+      (HostDisplayRegion::Ntsc, HostPixelFormat::Rgb888) => {
+        RenderFrame::new::<DisplayRegionNTSC, PixelFormatRGB888>()
+      }
+      (HostDisplayRegion::Ntsc, HostPixelFormat::Rgb565) => {
+        RenderFrame::new::<DisplayRegionNTSC, PixelFormatRGB565>()
+      }
+      (HostDisplayRegion::Pal, HostPixelFormat::Rgb888) => {
+        RenderFrame::new::<DisplayRegionPAL, PixelFormatRGB888>()
+      }
+      (HostDisplayRegion::Pal, HostPixelFormat::Rgb565) => {
+        RenderFrame::new::<DisplayRegionPAL, PixelFormatRGB565>()
+      }
+    }
   }
 }
 
@@ -47,14 +69,16 @@ pub struct Nes {
   host: Box<dyn HostSystem>,
   joypad: Rc<RefCell<Joypad>>,
   timing: FrameTiming,
+  show_fps: bool,
   shutdown: Shutdown
 }
 
 impl Nes {
-  pub fn insert<H : HostSystem + 'static>(cartridge: Cartridge, host: H) -> Self {
+  pub fn insert<H : HostSystem + 'static, R : Rom + 'static>(cartridge: Cartridge<R>, host: H) -> Self {
     let rom_mapper = crate::mappers::for_cart(cartridge);
 
-    let ppu = Rc::new(RefCell::new(Ppu::new(rom_mapper.clone())));
+    let frame = host.alloc_render_frame();
+    let ppu = Rc::new(RefCell::new(Ppu::new(rom_mapper.clone(), frame)));
     let joypad = Rc::new(RefCell::new(Joypad::default()));
     let bus = NesBus::new(rom_mapper.clone(), ppu.clone(), joypad.clone());
 
@@ -70,29 +94,25 @@ impl Nes {
       host: Box::new(host),
       joypad,
       timing: FrameTiming::new(),
-      shutdown: Shutdown::No
+      shutdown: Shutdown::No,
+      show_fps: false
     }
   }
 
-  pub fn insert_headless_host(cartridge: Cartridge) -> Self {
+  pub fn insert_headless_host<R : Rom + 'static>(cartridge: Cartridge<R>) -> Self {
     Self::insert(cartridge, HeadlessHost::default())
   }
 
   pub fn tick(&mut self) {
-    let last_pc = self.machine.cpu().pc();
-
     let cpu_cycles = self.machine.tick();
-
-    let last_op = self.debugger().last_opcode();
-    trace!(Tag::Cpu, "pc: ${:04x}, opcode: ${:02x}, cycles: {}", last_pc, last_op, cpu_cycles);
 
     let mut ppu = self.ppu.borrow_mut();
     let ppu_event = ppu.tick(cpu_cycles * 3);
   
     if ppu_event == TickEvent::EnteredVblank {
-      trace!(Tag::PpuTiming, "==VBLANK==");
+      trace!(Tag::PpuTiming, "VBLANK");
 
-      if *SHOW_FPS {
+      if self.show_fps {
         let fps = self.timing.fps_avg(self.host.elapsed_millis());
         fonts::draw(fps.to_string().as_str(), (10, 10), ppu.frame_mut());
       }
@@ -105,7 +125,7 @@ impl Nes {
       self.timing.post_delay(self.host.elapsed_millis());
 
       if ppu.nmi_on_vblank() {
-        trace!(Tag::PpuTiming, "==NMI==");
+        trace!(Tag::PpuTiming, "NMI");
         self.machine.cpu_mut().nmi();
       }
     }
@@ -120,6 +140,7 @@ impl Nes {
     }
   }
 
+  #[cfg(feature = "debugger")]
   pub fn debugger(&mut self) -> &mut Debugger {
     self.machine.debugger()
   }
@@ -144,11 +165,14 @@ impl Nes {
     self.timing.fps_max(fps_max);
   }
 
+  pub fn show_fps(&mut self, show_fps: bool) {
+    self.show_fps = show_fps;
+  }
+
   pub fn powered_on(&self) -> bool {
     self.shutdown != Shutdown::Yes
   }
 }
-
 
 struct FrameTiming {
   frame_n: usize,
@@ -193,13 +217,12 @@ impl FrameTiming {
 }
 
 // mainly for nestest
-impl std::fmt::Debug for Nes {
+impl core::fmt::Debug for Nes {
   // A:00 X:00 Y:00 P:26 SP:FB PPU:  0,120 CYC:40
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let c = self.cpu();
     let scanline = self.ppu.borrow_mut().scanline();
     let ppu_cycle = self.ppu.borrow_mut().cycle() + 21;
-    // let ppuw = if scanline >= 10 { 3 } else { 3 };
     let ppuw = 3;
     if ppu_cycle < 100 {
       write!(f, 

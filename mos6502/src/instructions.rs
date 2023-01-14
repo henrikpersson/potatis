@@ -80,32 +80,26 @@ pub enum Opcode {
   ALR, // AND oper + LSR
 }
 
-impl std::fmt::Display for Opcode {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{:?}", self)
-  }
-}
-
 #[derive(Clone, Debug)]
 pub struct Instruction {
   opcode: Opcode,
   mode: AddressMode,
   cycles: usize,
-  operands: Vec<u8>,
+  operands: (Option<u8>, Option<u8>),
   size: u8,
 }
 
 impl Instruction {
-  fn implied(opcode: Opcode, cycles: usize) -> Instruction {
-    Instruction { opcode, cycles, mode: AddressMode::Impl, size: 1, operands: vec![] }
+  fn imp(opcode: Opcode, cycles: usize) -> Self {
+    Self { opcode, cycles, mode: AddressMode::Impl, size: 1, operands: (None, None) }
   }
 
-  pub fn two(opcode: Opcode, cycles: usize, mode: AddressMode, operand: u8) -> Instruction {
-    Instruction { opcode, cycles, mode, size: 2, operands: vec![operand] }
+  fn two(opcode: Opcode, cycles: usize, mode: AddressMode, operand: u8) -> Self {
+    Self { opcode, cycles, mode, size: 2, operands: (Some(operand), None) }
   }
 
-  fn thr(opcode: Opcode, cycles: usize, mode: AddressMode, operand1: u8, operand2: u8) -> Instruction {
-    Instruction { opcode, cycles, mode, size: 3, operands: vec![operand1, operand2] }
+  fn thr(opcode: Opcode, cycles: usize, mode: AddressMode, operand0: u8, operand1: u8) -> Self {
+    Self { opcode, cycles, mode, size: 3, operands: (Some(operand0), Some(operand1)) }
   }
 
   pub fn size(&self) -> u8 {
@@ -125,27 +119,31 @@ impl Instruction {
   }
 
   pub fn resolve_operand_value_and_address(&self, cpu: &mut Cpu) -> (u8, u16) {
-    let address = self.mode.resolve(cpu, self.operands(), self.num_extra_cycles());
+    let address = self.mode.resolve(cpu, self.operands, self.num_extra_cycles());
     let value = cpu.bus().read8(address);
     (value, address)
   }
 
   pub fn resolve_operand_value(&self, cpu: &mut Cpu) -> u8 {
     match self.mode {
-      AddressMode::Imm => self.operands[0],
+      AddressMode::Imm => self.operands.0.unwrap(),
       _ => {
-        let address = self.mode.resolve(cpu, self.operands(), self.num_extra_cycles());
+        let address = self.mode.resolve(cpu, self.operands, self.num_extra_cycles());
         cpu.bus().read8(address)
       }
     }
   }
 
   pub fn resolve_operand_address(&self, cpu: &mut Cpu) -> u16 {
-    self.mode.resolve(cpu, self.operands(), self.num_extra_cycles())
+    self.mode.resolve(cpu, self.operands, self.num_extra_cycles())
   }
 
-  pub fn operands(&self) -> &[u8] {
-    &self.operands[..]
+  pub fn operand0(&self) -> u8 {
+    self.operands.0.unwrap()
+  }
+
+  pub fn operands(&self) -> (Option<u8>, Option<u8>) {
+    self.operands
   }
 
   fn num_extra_cycles(&self) -> usize {
@@ -170,26 +168,26 @@ impl Instruction {
 
   pub fn disassemble(opbyte: u8, operand1: u8, operand2: u8) -> Instruction {
     match opbyte {
-      0x02 | 0x12 | 0x22 | 0x32 | 0x42 | 0x52 | 0x62 | 0x72 | 0x92 | 0xB2 | 0xD2 | 0xF2 => Instruction::implied(Opcode::JAM, 0),
+      0x02 | 0x12 | 0x22 | 0x32 | 0x42 | 0x52 | 0x62 | 0x72 | 0x92 | 0xB2 | 0xD2 | 0xF2 => Instruction::imp(Opcode::JAM, 0),
 
-      0x00 => Instruction::implied(Opcode::BRK, 7),
-      0x40 => Instruction::implied(Opcode::RTI, 6),
+      0x00 => Instruction::imp(Opcode::BRK, 7),
+      0x40 => Instruction::imp(Opcode::RTI, 6),
 
-      0x38 => Instruction::implied(Opcode::SEC, 2),
-      0xf8 => Instruction::implied(Opcode::SED, 2),
-      0x78 => Instruction::implied(Opcode::SEI, 2),
+      0x38 => Instruction::imp(Opcode::SEC, 2),
+      0xf8 => Instruction::imp(Opcode::SED, 2),
+      0x78 => Instruction::imp(Opcode::SEI, 2),
   
-      0x18 => Instruction::implied(Opcode::CLC, 2),
-      0xd8 => Instruction::implied(Opcode::CLD, 2),
-      0x58 => Instruction::implied(Opcode::CLI, 2),
-      0xb8 => Instruction::implied(Opcode::CLV, 2),
+      0x18 => Instruction::imp(Opcode::CLC, 2),
+      0xd8 => Instruction::imp(Opcode::CLD, 2),
+      0x58 => Instruction::imp(Opcode::CLI, 2),
+      0xb8 => Instruction::imp(Opcode::CLV, 2),
   
-      0xaa => Instruction::implied(Opcode::TAX, 2),
-      0xa8 => Instruction::implied(Opcode::TAY, 2),
-      0xba => Instruction::implied(Opcode::TSX, 2),
-      0x8a => Instruction::implied(Opcode::TXA, 2),
-      0x9a => Instruction::implied(Opcode::TXS, 2),
-      0x98 => Instruction::implied(Opcode::TYA, 2),
+      0xaa => Instruction::imp(Opcode::TAX, 2),
+      0xa8 => Instruction::imp(Opcode::TAY, 2),
+      0xba => Instruction::imp(Opcode::TSX, 2),
+      0x8a => Instruction::imp(Opcode::TXA, 2),
+      0x9a => Instruction::imp(Opcode::TXS, 2),
+      0x98 => Instruction::imp(Opcode::TYA, 2),
 
       0x24 => Instruction::two(Opcode::BIT, 3, AddressMode::Zero, operand1),
       0x2c => Instruction::thr(Opcode::BIT, 4, AddressMode::Abs, operand1, operand2),
@@ -278,7 +276,7 @@ impl Instruction {
       0x4c => Instruction::thr(Opcode::JMP, 3, AddressMode::Abs, operand1, operand2),
       0x6c => Instruction::thr(Opcode::JMP, 5, AddressMode::Ind, operand1, operand2),
       0x20 => Instruction::thr(Opcode::JSR, 6, AddressMode::Abs, operand1, operand2),
-      0x60 => Instruction::implied(Opcode::RTS, 6),
+      0x60 => Instruction::imp(Opcode::RTS, 6),
   
       0xd0 => Instruction::two(Opcode::BNE, 2, AddressMode::Rel, operand1),
       0xf0 => Instruction::two(Opcode::BEQ, 2, AddressMode::Rel, operand1),
@@ -289,10 +287,10 @@ impl Instruction {
       0x50 => Instruction::two(Opcode::BVC, 2, AddressMode::Rel, operand1),
       0x70 => Instruction::two(Opcode::BVS, 2, AddressMode::Rel, operand1),
   
-      0xca => Instruction::implied(Opcode::DEX, 2),
-      0x88 => Instruction::implied(Opcode::DEY, 2),
-      0xe8 => Instruction::implied(Opcode::INX, 2),
-      0xc8 => Instruction::implied(Opcode::INY, 2),
+      0xca => Instruction::imp(Opcode::DEX, 2),
+      0x88 => Instruction::imp(Opcode::DEY, 2),
+      0xe8 => Instruction::imp(Opcode::INX, 2),
+      0xc8 => Instruction::imp(Opcode::INY, 2),
 
       0xc6 => Instruction::two(Opcode::DEC, 5, AddressMode::Zero, operand1),
       0xd6 => Instruction::two(Opcode::DEC, 6, AddressMode::ZeroX, operand1),
@@ -305,7 +303,7 @@ impl Instruction {
       0xfe => Instruction::thr(Opcode::INC, 7, AddressMode::AbsX, operand1, operand2),
   
       // 1 byte NOPs
-      0xea | 0x1a | 0x3a => Instruction::implied(Opcode::NOP, 2),
+      0xea | 0x1a | 0x3a => Instruction::imp(Opcode::NOP, 2),
 
       // 2 byte NOPs 2 cycles
       0x80 | 0x82 | 0x89 | 0xc2 | 0xe2 => Instruction::two(Opcode::NOP, 2, AddressMode::Nop, operand1),
@@ -335,34 +333,34 @@ impl Instruction {
       0xc1 => Instruction::two(Opcode::CMP, 6, AddressMode::IndX, operand1),
       0xd1 => Instruction::two(Opcode::CMP, 5, AddressMode::IndY, operand1),
   
-      0x4a => Instruction::implied(Opcode::LSR, 2),
+      0x4a => Instruction::imp(Opcode::LSR, 2),
       0x46 => Instruction::two(Opcode::LSR, 5, AddressMode::Zero, operand1),
       0x56 => Instruction::two(Opcode::LSR, 6, AddressMode::ZeroX, operand1),
       0x4e => Instruction::thr(Opcode::LSR, 6, AddressMode::Abs, operand1, operand2),
       0x5e => Instruction::thr(Opcode::LSR, 7, AddressMode::AbsX, operand1, operand2),
 
-      0x0a => Instruction::implied(Opcode::ASL, 2),
+      0x0a => Instruction::imp(Opcode::ASL, 2),
       0x06 => Instruction::two(Opcode::ASL, 5, AddressMode::Zero, operand1),
       0x16 => Instruction::two(Opcode::ASL, 6, AddressMode::ZeroX, operand1),
       0x0e => Instruction::thr(Opcode::ASL, 6, AddressMode::Abs, operand1, operand2),
       0x1e => Instruction::thr(Opcode::ASL, 7, AddressMode::AbsX, operand1, operand2),
 
-      0x2a => Instruction::implied(Opcode::ROL, 2),
+      0x2a => Instruction::imp(Opcode::ROL, 2),
       0x26 => Instruction::two(Opcode::ROL, 5, AddressMode::Zero, operand1),
       0x36 => Instruction::two(Opcode::ROL, 6, AddressMode::ZeroX, operand1),
       0x2e => Instruction::thr(Opcode::ROL, 6, AddressMode::Abs, operand1, operand2),
       0x3e => Instruction::thr(Opcode::ROL, 7, AddressMode::AbsX, operand1, operand2),
 
-      0x6a => Instruction::implied(Opcode::ROR, 2),
+      0x6a => Instruction::imp(Opcode::ROR, 2),
       0x66 => Instruction::two(Opcode::ROR, 5, AddressMode::Zero, operand1),
       0x76 => Instruction::two(Opcode::ROR, 6, AddressMode::ZeroX, operand1),
       0x6e => Instruction::thr(Opcode::ROR, 6, AddressMode::Abs, operand1, operand2),
       0x7e => Instruction::thr(Opcode::ROR, 7, AddressMode::AbsX, operand1, operand2),
   
-      0x48 => Instruction::implied(Opcode::PHA, 3),
-      0x68 => Instruction::implied(Opcode::PLA, 4),
-      0x08 => Instruction::implied(Opcode::PHP, 3),
-      0x28 => Instruction::implied(Opcode::PLP, 4),
+      0x48 => Instruction::imp(Opcode::PHA, 3),
+      0x68 => Instruction::imp(Opcode::PLA, 4),
+      0x08 => Instruction::imp(Opcode::PHP, 3),
+      0x28 => Instruction::imp(Opcode::PLP, 4),
 
       0xa7 => Instruction::two(Opcode::LAX, 3, AddressMode::Zero, operand1),
       0xb7 => Instruction::two(Opcode::LAX, 4, AddressMode::ZeroY, operand1),
@@ -427,14 +425,14 @@ impl Instruction {
       0x73 => Instruction::two(Opcode::RRA, 8, AddressMode::IndY, operand1),
 
       // TODO illegal, not sure if they should be NOPS or real
-      // 0xda => Instruction::implied(Opcode::PHX, 3),
-      // 0x5a => Instruction::implied(Opcode::PHY, 3),
-      // 0xfa => Instruction::implied(Opcode::PLX, 4),
-      // 0x7a => Instruction::implied(Opcode::PLY, 4),
-      0xda => Instruction::implied(Opcode::NOP, 2),
-      0x5a => Instruction::implied(Opcode::NOP, 2),
-      0xfa => Instruction::implied(Opcode::NOP, 2),
-      0x7a => Instruction::implied(Opcode::NOP, 2),
+      // 0xda => Instruction::imp(Opcode::PHX, 3),
+      // 0x5a => Instruction::imp(Opcode::PHY, 3),
+      // 0xfa => Instruction::imp(Opcode::PLX, 4),
+      // 0x7a => Instruction::imp(Opcode::PLY, 4),
+      0xda => Instruction::imp(Opcode::NOP, 2),
+      0x5a => Instruction::imp(Opcode::NOP, 2),
+      0xfa => Instruction::imp(Opcode::NOP, 2),
+      0x7a => Instruction::imp(Opcode::NOP, 2),
 
       0x0b => Instruction::two(Opcode::ANC, 2, AddressMode::Imm, operand1),
       0x2b => Instruction::two(Opcode::ANC2, 2, AddressMode::Imm, operand1),

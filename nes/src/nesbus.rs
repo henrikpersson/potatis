@@ -1,5 +1,5 @@
-use std::{rc::Rc, cell::RefCell};
-
+use core::cell::RefCell;
+use alloc::{rc::Rc};
 use common::kilobytes;
 use mos6502::memory::Bus;
 
@@ -79,9 +79,9 @@ impl Bus for NesBus {
       MappedDevice::PpuOamDma => {
         // Dump CPU page XX00..XXFF to PPU OAM
         let page_start = (val as u16) << 8;
-        let mem: Vec<u8> = (page_start..=page_start+0xff).map(|addr| self.read8(addr)).collect();
+        let mem = (page_start..=page_start+0xff).map(|addr| self.read8(addr));
         // println!("{:#04x} - dumping {:#06x}..{:#06x}", val, page_start, page_start+0xff);
-        self.ppu.borrow_mut().cpu_oam_dma(&mem[..]);
+        self.ppu.borrow_mut().cpu_oam_dma(mem);
       }
       MappedDevice::Joypad => {
         match address {
@@ -98,6 +98,7 @@ impl Bus for NesBus {
 
 #[cfg(test)]
 mod tests {
+  use crate::frame::{RenderFrame, DisplayRegionNTSC, PixelFormatRGB888};
   use super::*;
 
   struct TestBus{}
@@ -121,9 +122,10 @@ mod tests {
   fn sut() -> NesBus {
     let bus = Rc::new(RefCell::new(TestBus{}));
     let joypad = Joypad::default();
+    let frame = RenderFrame::new::<DisplayRegionNTSC, PixelFormatRGB888>();
     NesBus::new(
       bus.clone(), 
-      Rc::new(RefCell::new(Ppu::new(bus))),
+      Rc::new(RefCell::new(Ppu::new(bus, frame))),
       Rc::new(RefCell::new(joypad))
     )
   }

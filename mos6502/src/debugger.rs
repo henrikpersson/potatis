@@ -1,6 +1,7 @@
+use alloc::vec::Vec;
 use getch::Getch;
 use std::{fmt::Write, collections::{VecDeque}, ops::RangeInclusive};
-use crate::{cpu::{Cpu, Reg}, instructions::{Instruction, Opcode}};
+use crate::{cpu::{Cpu, Reg, Flag}, instructions::{Instruction, Opcode}};
 
 const BACKTRACE_LIMIT: usize = 11;
 
@@ -221,25 +222,40 @@ impl Debugger {
     let mut opbyte_str = String::new();
     write!(&mut opbyte_str, "{:#04x}", opbyte).unwrap();
   
-    // TODO move to Into<String> for Instruction?
     let mut operands_str = String::new();
-    for operand in inst.operands() {
+    let operands = [inst.operands().0, inst.operands().1];
+    for operand in operands.iter().filter_map(|o| *o) {
       write!(&mut operands_str, "{:#04x} ", operand).unwrap();
     }
   
     let mut mnemonic_str = String::new();
     write!(&mut mnemonic_str, "{:?} {:?} {}", inst.opcode(), inst.mode(), operands_str).unwrap();
   
-    // let ascii_operand = if inst.mode() == AddressMode::Imm {
-    //   String::from_utf8(vec![inst.operands()[0]]).unwrap_or_default()
-    // } else {
-    //   String::new()
-    // };
-  
-    // if ascii_operand.is_empty() {
-      println!("{:<10} {} {:<10} {}", pc_str, opbyte_str, operands_str, mnemonic_str);
-    // } else {
-    //   println!("{:<10} {} {:<10} {} (b'{}')", pc_str, opbyte_str, operands_str, mnemonic_str, ascii_operand);
-    // }
+    println!("{:<10} {} {:<10} {}", pc_str, opbyte_str, operands_str, mnemonic_str);
+  }
+}
+
+impl std::fmt::Debug for Cpu {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn hexdec(val: u8) -> String {
+      format!("{:#04x} ({})", val, val)
+    }
+
+    write!(f, "--------\n")?;
+    write!(f, "pc:\t{:#06x}\nsp:\t{}\nacc:\t{}\nx:\t{}\ny:\t{}\n", self.pc(), hexdec(self[Reg::SP]), hexdec(self[Reg::AC]), hexdec(self[Reg::X]), hexdec(self[Reg::Y]))?;
+    write!(f, "NEG={}, OVF={}, DEC={}, INT={}, ZER={}, CAR={} ({:#010b}) ({:#04x})", self[Flag::N], self[Flag::V], self[Flag::D], self[Flag::I], self[Flag::Z], self[Flag::C], self.flags_as_byte(), self.flags_as_byte())
+  }
+}
+
+impl std::fmt::Display for Cpu {
+  // nestest format
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}", self[Reg::AC], self[Reg::X], self[Reg::Y], self.flags_as_byte(), self[Reg::SP])
+  }
+}
+
+impl std::fmt::Display for Opcode {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{:?}", self)
   }
 }

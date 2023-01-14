@@ -1,5 +1,5 @@
-use std::{rc::Rc, cell::RefCell};
-
+use core::cell::RefCell;
+use alloc::rc::Rc;
 use common::kilobytes;
 
 use crate::{cartridge::Mirroring, mappers::Mapper};

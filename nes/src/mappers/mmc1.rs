@@ -2,7 +2,7 @@ use core::panic;
 use common::kilobytes;
 use mos6502::memory::Bus;
 
-use crate::cartridge::{Cartridge, Mirroring};
+use crate::cartridge::{Cartridge, Mirroring, Rom};
 
 use super::Mapper;
 
@@ -30,16 +30,13 @@ enum ChrBankMode {
   SwitchTwo4KbBanks
 }
 
-pub struct MMC1 {
-  cart: Cartridge,
-  prg_ram: [u8; kilobytes::KB8],
+pub struct MMC1<R : Rom> {
+  cart: Cartridge<R>,
   
-
-  prg_rom_banks: Vec<Vec<u8>>,
   prg_rom_bank_mode: PrgBankMode,
+  prg_rom_bank_num: usize,
   selected_prg_bank: u8,
 
-  chr_rom_banks: Vec<Vec<u8>>,
   chr_rom_bank_mode: ChrBankMode,
   selected_chr_bank_0: u8,
   selected_chr_bank_1: u8,
@@ -49,25 +46,15 @@ pub struct MMC1 {
   shift_register: u8,
 }
 
-impl MMC1 {
-  pub fn new(cart: Cartridge) -> MMC1 {
-    let chunks = cart.prg().chunks_exact(kilobytes::KB16);
-    assert!(chunks.remainder().is_empty());
-    let prg_rom_banks: Vec<Vec<u8>> = chunks.map(|s| s.to_vec()).collect();
-
-    let chunks = cart.chr().chunks_exact(kilobytes::KB4);
-    assert!(chunks.remainder().is_empty());
-    let chr_rom_banks: Vec<Vec<u8>> = chunks.map(|s| s.to_vec()).collect();
-
+impl<R : Rom> MMC1<R> {
+  pub fn new(cart: Cartridge<R>) -> Self {
     let mirroring = cart.mirroring();
     MMC1 {
+      prg_rom_bank_num: cart.prg().len() / kilobytes::KB16,
       cart,
-      prg_ram: [0; kilobytes::KB8],
-      prg_rom_banks,
       // "seems to reliably power on in the last bank (by setting the "PRG ROM bank mode" to 3)"
       // https://www.nesdev.org/wiki/MMC1#Control_(internal,_$8000-$9FFF)
       prg_rom_bank_mode: PrgBankMode::FixLastUpperSwitchLower,
-      chr_rom_banks,
       chr_rom_bank_mode: ChrBankMode::Switch8Kb,
       selected_chr_bank_0: 0,
       selected_chr_bank_1: 0,
@@ -109,7 +96,6 @@ impl MMC1 {
         }
         0xe000..=0xffff => { // PRG bank
           self.selected_prg_bank = self.shift_register & 0b01111;
-          // println!("selected_prg_bank: {}", self.selected_prg_bank);
         }
         _ => panic!("unknown register")
       }
@@ -120,7 +106,6 @@ impl MMC1 {
 
   fn switch_lower_chr_bank(&mut self, selected_bank: u8) {
     // https://www.nesdev.org/wiki/MMC1#iNES_Mapper_001
-    // println!("{} to CHR bank 0", selected_bank);
     match self.chr_rom_bank_mode {
       ChrBankMode::Switch8Kb => self.selected_chr_bank_0 = selected_bank >> 1,
       ChrBankMode::SwitchTwo4KbBanks => self.selected_chr_bank_0 = selected_bank,
@@ -129,7 +114,6 @@ impl MMC1 {
 
   fn switch_upper_chr_bank(&mut self, selected_bank: u8) {
     // https://www.nesdev.org/wiki/MMC1#iNES_Mapper_001
-    // println!("{} to CHR bank 1", selected_bank);
     match self.chr_rom_bank_mode {
       ChrBankMode::Switch8Kb => (), // (ignored in 8 KB mode)
       ChrBankMode::SwitchTwo4KbBanks => self.selected_chr_bank_1 = selected_bank,
@@ -145,71 +129,62 @@ impl MMC1 {
       _ => unreachable!()
     };
 
-    // println!("setting mirroring to: {:?}", self.mirroring);
-
     let chr_rom_bank_mode = (val & 0b10000) >> 4;
     self.chr_rom_bank_mode = match chr_rom_bank_mode {
       0 => ChrBankMode::Switch8Kb,
       _ => ChrBankMode::SwitchTwo4KbBanks
     };
-    // println!("setting chr rom bank mode: {:?}", self.chr_rom_bank_mode);
 
     let prg_rom_bank_mode = (val & 0b01100) >> 2;
     self.prg_rom_bank_mode = prg_rom_bank_mode.into();
-    // println!("setting prg rom bank mode: {:?}", self.prg_rom_bank_mode);
   }
 
-  fn lower_prg_bank(&self) -> &Vec<u8> {
-    match self.prg_rom_bank_mode {
-      PrgBankMode::Switch32Kb => &self.prg_rom_banks[self.selected_prg_bank as usize >> 1],
-      PrgBankMode::FixFirstLowerSwitchUpper => &self.prg_rom_banks[0],
-      PrgBankMode::FixLastUpperSwitchLower => &self.prg_rom_banks[self.selected_prg_bank as usize],
-    }
+  fn lower_prg_bank(&self) -> &[u8] {
+    let bank = match self.prg_rom_bank_mode {
+      PrgBankMode::Switch32Kb => self.selected_prg_bank as usize >> 1,
+      PrgBankMode::FixFirstLowerSwitchUpper => 0,
+      PrgBankMode::FixLastUpperSwitchLower => self.selected_prg_bank as usize,
+    };
+    let bank_start = bank * kilobytes::KB16;
+    &self.cart.prg()[bank_start..bank_start + kilobytes::KB16]
   }
 
-  fn upper_prg_bank(&self) -> &Vec<u8> {
-    // &self.rom_banks[self.selected_rom as usize]
-    match self.prg_rom_bank_mode {
-      PrgBankMode::Switch32Kb => &self.prg_rom_banks[(self.selected_prg_bank as usize >> 1) + 1],
-      PrgBankMode::FixFirstLowerSwitchUpper => &self.prg_rom_banks[self.selected_prg_bank as usize],
-      PrgBankMode::FixLastUpperSwitchLower => self.prg_rom_banks.last().unwrap(),
-    }
+  fn upper_prg_bank(&self) -> &[u8] {
+    let bank = match self.prg_rom_bank_mode {
+      PrgBankMode::Switch32Kb => (self.selected_prg_bank as usize >> 1) + 1,
+      PrgBankMode::FixFirstLowerSwitchUpper => self.selected_prg_bank as usize,
+      PrgBankMode::FixLastUpperSwitchLower => self.prg_rom_bank_num - 1,
+    };
+    let bank_start = bank * kilobytes::KB16;
+    &self.cart.prg()[bank_start..bank_start + kilobytes::KB16]
   }
 
-  fn lower_chr_bank(&self) -> &Vec<u8> {
-    match self.chr_rom_bank_mode {
-      ChrBankMode::Switch8Kb => &self.chr_rom_banks[self.selected_chr_bank_0 as usize],
-      ChrBankMode::SwitchTwo4KbBanks => &self.chr_rom_banks[self.selected_chr_bank_0 as usize],
-    }
+  fn lower_chr_bank(&self) -> &[u8] {
+    let bank = match self.chr_rom_bank_mode {
+      ChrBankMode::Switch8Kb => self.selected_chr_bank_0 as usize,
+      ChrBankMode::SwitchTwo4KbBanks => self.selected_chr_bank_0 as usize,
+    };
+    let bank_start = bank * kilobytes::KB4;
+    &self.cart.chr()[bank_start..bank_start + kilobytes::KB4]
   }
 
-  fn upper_chr_bank(&self) -> &Vec<u8> {
-    // &self.rom_banks[self.selected_rom as usize]
-    match self.chr_rom_bank_mode {
-      ChrBankMode::Switch8Kb => &self.chr_rom_banks[self.selected_chr_bank_0 as usize + 1],
-      ChrBankMode::SwitchTwo4KbBanks => &self.chr_rom_banks[self.selected_chr_bank_1 as usize],
-    }
-  }
-
-  fn write_chr_ram(&mut self, val: u8, address: u16) {
-    if !self.cart.chr_ram_mode() {
-      panic!("This cart is not configured for CHR RAM! Legit write?")
-    }
-
-    // TODO: don't to this every write op
-    let mut ram: Vec<&mut u8> = self.chr_rom_banks.iter_mut().flatten().collect();
-    *ram[address as usize] = val;
+  fn upper_chr_bank(&self) -> &[u8] {
+    let bank = match self.chr_rom_bank_mode {
+      ChrBankMode::Switch8Kb => self.selected_chr_bank_0 as usize + 1,
+      ChrBankMode::SwitchTwo4KbBanks => self.selected_chr_bank_1 as usize,
+    };
+    let bank_start = bank * kilobytes::KB4;
+    &self.cart.chr()[bank_start..bank_start + kilobytes::KB4]
   }
 }
 
-impl Mapper for MMC1 {
+impl<R : Rom> Mapper for MMC1<R> {
   fn mirroring(&self) -> crate::cartridge::Mirroring {
     self.mirroring
   }
 }
 
-impl Bus for MMC1 {
-  
+impl <R : Rom>Bus for MMC1<R> {
   fn read8(&self, address: u16) -> u8 {
     // println!("Read: {:#06x}", address);
     match address {
@@ -218,7 +193,7 @@ impl Bus for MMC1 {
       0x1000..=0x1fff => self.upper_chr_bank()[address as usize - 0x1000],
 
       // CPU
-      0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000],
+      0x6000..=0x7fff => self.cart.prg_ram()[address as usize - 0x6000],
       0x8000..=0xbfff => self.lower_prg_bank()[address as usize - 0x8000],
       0xc000..=0xffff => self.upper_prg_bank()[address as usize - 0xc000],
       // TODO: In most mappers, banks past the end of PRG or CHR ROM show up as mirrors of earlier banks.
@@ -230,10 +205,10 @@ impl Bus for MMC1 {
     // println!("Write: {:#06x} {:#04x}", address, val);
     match address {
       // PPU
-      0x0000..=0x1fff => self.write_chr_ram(val, address),
+      0x0000..=0x1fff => self.cart.chr_ram()[address as usize] = val,
 
       // CPU
-      0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000] = val,
+      0x6000..=0x7fff => self.cart.prg_ram_mut()[address as usize - 0x6000] = val,
       0x8000..=0xffff => self.write_to_shift_register(val, address),
       _ => () //panic!("writing to rom: {:#06x}", address)
     }

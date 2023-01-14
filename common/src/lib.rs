@@ -1,3 +1,4 @@
+#![no_std]
 
 pub mod kilobytes {
   pub const KB1: usize = 1024;
@@ -9,7 +10,7 @@ pub mod kilobytes {
 }
 
 pub mod utils {
-  pub fn parse_hex(src: &str) -> Result<u16, std::num::ParseIntError> {
+  pub fn parse_hex(src: &str) -> core::result::Result<u16, core::num::ParseIntError> {
     u16::from_str_radix(src, 16)
   }
 }

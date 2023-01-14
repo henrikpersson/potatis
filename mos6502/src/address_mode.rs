@@ -1,3 +1,5 @@
+use alloc::boxed::Box;
+
 use crate::{cpu::{Cpu, Reg}, memory::Bus};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,24 +20,15 @@ pub enum AddressMode {
 }
 
 impl AddressMode {
-  pub fn resolve(&self, cpu: &mut Cpu, operands: &[u8], num_extra_cycles: usize) -> u16 {
-    // Guard for debug..
-    match self {
-      AddressMode::Imm => panic!("no need to resolve imm"),
-      AddressMode::Impl => panic!("no need to resolve impl"),
-      AddressMode::Rel => panic!("not sure but I think only branch opc uses relative addressing..."),
-      AddressMode::Nop => panic!("resolving nop"),
-      _ => ()
-    }
-
+  pub fn resolve(&self, cpu: &mut Cpu, operands: (Option<u8>, Option<u8>), num_extra_cycles: usize) -> u16 {
     let mem = cpu.bus();
 
     if self.is_zeropage() {
-      self.resolve_zeropage(cpu, operands[0], num_extra_cycles)
+      self.resolve_zeropage(cpu, operands.0.unwrap(), num_extra_cycles)
     }
     else {
-      let low = operands[0];
-      let high = operands[1];
+      let low = operands.0.unwrap();
+      let high = operands.1.unwrap();
       let address: u16 = ((high as u16) << 8) | low as u16;
 
       match self {

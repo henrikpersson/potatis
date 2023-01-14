@@ -1,3 +1,5 @@
+use alloc::boxed::Box;
+
 use crate::{cpu::Cpu, memory::Bus, debugger::Debugger};
 
 pub struct Mos6502 {
@@ -25,6 +27,7 @@ impl Mos6502 {
     self.cpu.bus()
   }
 
+  #[cfg(feature = "debugger")]
   pub fn debugger(&mut self) -> &mut Debugger {
     &mut self.debugger
   }
@@ -45,6 +48,7 @@ impl Mos6502 {
   pub fn tick(&mut self) -> usize {
     let inst = self.cpu.fetch_next_instruction();
 
+    #[cfg(feature = "debugger")]
     self.debugger.on_tick(&self.cpu, &inst);
 
     let cycles = self.cpu.execute(&inst);

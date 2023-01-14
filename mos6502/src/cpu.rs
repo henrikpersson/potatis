@@ -1,4 +1,5 @@
-use std::ops::{Index, IndexMut};
+use core::ops::{Index, IndexMut};
+use alloc::boxed::Box;
 use crate::address_mode::AddressMode;
 use crate::memory::Bus;
 use crate::instructions::{Instruction, Opcode};
@@ -67,7 +68,6 @@ impl Cpu {
   }
 
   pub fn execute(&mut self, inst: &Instruction) -> usize {
-    let operands = &inst.operands();
     let pc_before_exec = self.pc();
 
     // println!("exec: {:?}", inst.opcode());
@@ -195,28 +195,28 @@ impl Cpu {
         self.set_pc(ret);
       }
       Opcode::BNE => {
-        self.branch_if(operands[0], self[Flag::Z] == 0);
+        self.branch_if(inst.operand0(), self[Flag::Z] == 0);
       }
       Opcode::BEQ => {
-        self.branch_if(operands[0], self[Flag::Z] == 1);
+        self.branch_if(inst.operand0(), self[Flag::Z] == 1);
       }
       Opcode::BPL => {
-        self.branch_if(operands[0], self[Flag::N] == 0);
+        self.branch_if(inst.operand0(), self[Flag::N] == 0);
       }
       Opcode::BMI => {
-        self.branch_if(operands[0], self[Flag::N] == 1);
+        self.branch_if(inst.operand0(), self[Flag::N] == 1);
       }
       Opcode::BCC => {
-        self.branch_if(operands[0], self[Flag::C] == 0);
+        self.branch_if(inst.operand0(), self[Flag::C] == 0);
       }
       Opcode::BCS => {
-        self.branch_if(operands[0], self[Flag::C] == 1);
+        self.branch_if(inst.operand0(), self[Flag::C] == 1);
       }
       Opcode::BVC => {
-        self.branch_if(operands[0], self[Flag::V] == 0);
+        self.branch_if(inst.operand0(), self[Flag::V] == 0);
       }
       Opcode::BVS => {
-        self.branch_if(operands[0], self[Flag::V] == 1);
+        self.branch_if(inst.operand0(), self[Flag::V] == 1);
       }
       Opcode::CPY => {
         let val = inst.resolve_operand_value(self);
@@ -454,7 +454,6 @@ impl Cpu {
     self[Flag::I] = 1;
 
     let start = self.read16(Self::RESET_VECTOR);
-    println!("------------> RESET VECTOR: {:#06x}", start);
     self.set_pc(start);
   }
 
@@ -679,25 +678,6 @@ impl Index<Flag> for Cpu {
 impl IndexMut<Flag> for Cpu {
   fn index_mut(&mut self, index: Flag) -> &mut u8 {
     &mut self.flags[index as usize]
-  }
-}
-
-impl std::fmt::Debug for Cpu {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    fn hexdec(val: u8) -> String {
-      format!("{:#04x} ({})", val, val)
-    }
-
-    write!(f, "--------\n")?;
-    write!(f, "pc:\t{:#06x}\nsp:\t{}\nacc:\t{}\nx:\t{}\ny:\t{}\n", self.pc, hexdec(self[Reg::SP]), hexdec(self[Reg::AC]), hexdec(self[Reg::X]), hexdec(self[Reg::Y]))?;
-    write!(f, "NEG={}, OVF={}, DEC={}, INT={}, ZER={}, CAR={} ({:#010b}) ({:#04x})", self[Flag::N], self[Flag::V], self[Flag::D], self[Flag::I], self[Flag::Z], self[Flag::C], self.flags_as_byte(), self.flags_as_byte())
-  }
-}
-
-impl std::fmt::Display for Cpu {
-  // nestest format
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}", self[Reg::AC], self[Reg::X], self[Reg::Y], self.flags_as_byte(), self[Reg::SP])
   }
 }
 

@@ -1,19 +1,22 @@
-use nes::{joypad::{Joypad, JoypadEvent, JoypadButton}, frame::RenderFrame, nes::{HostSystem, Shutdown}};
+use std::time::Instant;
+
+use nes::{joypad::{Joypad, JoypadEvent, JoypadButton}, frame::{RenderFrame, DisplayRegion, DisplayRegionNTSC, DisplayRegionPAL}, nes::{HostSystem, Shutdown, HostDisplayRegion}};
 use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode, Sdl, render::{Texture, Canvas, TextureCreator}, video::{Window, WindowContext}};
 
 pub struct SdlHostSystem<'a> {
   context: Sdl,
   canvas: Canvas<Window>,
   texture: Texture<'a>,
-  _creator: TextureCreator<WindowContext>
+  _creator: TextureCreator<WindowContext>,
+  time: Instant,
 }
 
 impl SdlHostSystem<'_> {
   pub fn new() -> Self {
-    // TODO: Configurable
+    // TODO: Inject
     let scale = 4;
-    let w = nes::display::NTSC_W as u32;
-    let h = nes::display::NTSC_H as u32;
+    let w = DisplayRegionNTSC::WIDTH as u32;
+    let h = DisplayRegionNTSC::HEIGHT as u32;
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -40,20 +43,20 @@ impl SdlHostSystem<'_> {
       _creator: creator,
       context: sdl_context,
       canvas,
-      texture
+      texture,
+      time: Instant::now(),
     }
   }
 }
 
 impl HostSystem for SdlHostSystem<'_> {
   fn render(&mut self, frame: &RenderFrame) {
-    let ntsc = nes::display::ntsc(frame.pixels());
-    self.texture.update(None, &ntsc.pixels, ntsc.pitch).unwrap();
+    self.texture.update(None, frame.pixels(), frame.pitch()).unwrap();
     self.canvas.copy(&self.texture, None, None).unwrap();
     self.canvas.present();
   }
 
-  fn poll_events(&mut self, joypad: &mut Joypad) -> Shutdown {
+  fn poll_events(&mut self, joypad: &mut Joypad, ) -> Shutdown {
     for event in self.context.event_pump().unwrap().poll_iter() {
       if let Some(joypad_ev) = map_joypad(&event) {
         joypad.on_event(joypad_ev);
@@ -69,6 +72,15 @@ impl HostSystem for SdlHostSystem<'_> {
       }
     }
     Shutdown::No
+  }
+
+  fn elapsed_millis(&self) -> usize {
+    self.time.elapsed().as_millis() as usize
+  }
+
+  fn delay(&self, d: std::time::Duration) {
+    // SDL_Delay?
+    std::thread::sleep(d)
   }
 }
 

@@ -1,3 +1,5 @@
 /target
 .DS_Store
 /legal-roms
+Cargo.lock
+dhat*.json

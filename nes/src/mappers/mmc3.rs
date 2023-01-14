@@ -2,7 +2,7 @@ use core::panic;
 use common::kilobytes;
 use mos6502::memory::Bus;
 
-use crate::cartridge::{Cartridge, Mirroring};
+use crate::cartridge::{Cartridge, Mirroring, Rom};
 
 use super::Mapper;
 
@@ -18,14 +18,12 @@ enum ChrBankMode {
   TwoKbAt1000_1 = 1,
 }
 
-pub struct MMC3 {
-  cart: Cartridge,
-  prg_ram: [u8; kilobytes::KB8],
+pub struct MMC3<R : Rom> {
+  cart: Cartridge<R>,
   
-  prg_rom_banks: Vec<Vec<u8>>,
+  prg_rom_banks_total: usize,
   prg_rom_bank_mode: PrgBankMode,
 
-  chr_rom: Vec<u8>,
   chr_rom_bank_mode: ChrBankMode,
   mirroring: Option<Mirroring>,
 
@@ -38,20 +36,12 @@ pub struct MMC3 {
   irq_reload: bool,
 }
 
-impl MMC3 {
-  pub fn new(cart: Cartridge) -> Self {
-    let chunks = cart.prg().chunks_exact(kilobytes::KB8);
-    assert!(chunks.remainder().is_empty());
-    let prg_rom_banks: Vec<Vec<u8>> = chunks.map(|s| s.to_vec()).collect();
-
-    let chr = cart.chr().to_vec();
-
+impl<R : Rom> MMC3<R> {
+  pub fn new(cart: Cartridge<R>) -> Self {
     Self {
+      prg_rom_banks_total: cart.prg().len() / kilobytes::KB8,
       cart,
-      prg_ram: [0; kilobytes::KB8],
-      prg_rom_banks,
       prg_rom_bank_mode: PrgBankMode::Swap8000FixC000_0,
-      chr_rom: chr,
       chr_rom_bank_mode: ChrBankMode::TwoKbAt0000_0,
       mirroring: None,
       registers: [0; 8],
@@ -65,7 +55,7 @@ impl MMC3 {
 
   // https://www.nesdev.org/wiki/MMC3#PRG_Banks
   fn read_prg(&self, address: u16) -> u8 {
-    let second_last_bank = self.prg_rom_banks.len() - 2;
+    let second_last_bank = self.prg_rom_banks_total - 2;
     let d6 = self.prg_rom_bank_mode as u8;
     let bank = match (address, d6) {
       (0x8000..=0x9fff, 0) => self.registers[6] as usize,
@@ -73,13 +63,13 @@ impl MMC3 {
       (0xa000..=0xbfff, _) => self.registers[7] as usize,
       (0xc000..=0xdfff, 0) => second_last_bank,
       (0xc000..=0xdfff, 1) => self.registers[6] as usize,
-      (0xe000..=0xffff, _) => self.prg_rom_banks.len() - 1,
+      (0xe000..=0xffff, _) => self.prg_rom_banks_total - 1,
       _ => panic!()
     };
 
     // Remove top bank indexing bits - 0x1fff == 8kb - 1
     let offset = address as usize & 0x1fff;
-    self.prg_rom_banks[bank][offset]
+    self.cart.prg()[(bank * kilobytes::KB8) + offset]
   }
 
   // https://www.nesdev.org/wiki/MMC3#CHR_Banks
@@ -111,11 +101,11 @@ impl MMC3 {
     // Remove top bank indexing bits - 0x03ff == 1kb - 1
     let offset = address as usize & 0x3ff; 
     let base = kilobytes::KB1 * bank as usize;
-    self.chr_rom[base + offset]
+    self.cart.chr()[base + offset]
   }
 }
 
-impl Mapper for MMC3 {
+impl<R : Rom> Mapper for MMC3<R> {
   fn mirroring(&self) -> crate::cartridge::Mirroring {
     // This bit has no effect on cartridges with hardwired 4-screen VRAM. 
     // In the iNES and NES 2.0 formats, this can be identified through bit 3 of byte $06 of the header. 
@@ -142,13 +132,13 @@ impl Mapper for MMC3 {
   }
 }
 
-impl Bus for MMC3 {
+impl<R : Rom> Bus for MMC3<R> {
   
   fn read8(&self, address: u16) -> u8 {
     // println!("Read: {:#06x}", address);
     match address {
       0x0000..=0x1fff => self.read_chr(address),
-      0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000],
+      0x6000..=0x7fff => self.cart.prg_ram()[address as usize - 0x6000],
       0x8000..=0xffff => self.read_prg(address),
       _ => 0
     }
@@ -159,7 +149,7 @@ impl Bus for MMC3 {
     let even = address & 1 == 0;
     match address {
       // CPU $6000-$7FFF: 8 KB PRG RAM bank (optional)
-      0x6000..=0x7fff => self.prg_ram[address as usize - 0x6000] = val,
+      0x6000..=0x7fff => self.cart.prg_ram_mut()[address as usize - 0x6000] = val,
 
       // Registers
       0x8000..=0x9fff => {

@@ -1,0 +1,11 @@
+[package]
+name = "nes-embedded"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+embedded-alloc = "0.5.0"
+rp-pico = "0.5.0" # rp-hal-boards, not needed! manually create the board here.
+nes = { path = "../nes", default-features = false }

@@ -1,26 +1,21 @@
 use common::kilobytes;
 use mos6502::memory::Bus;
 
-use crate::cartridge::Cartridge;
+use crate::cartridge::{Cartridge, Rom};
 
 use super::Mapper;
 
 const BANK_SIZE: usize = kilobytes::KB8;
 
 // Mapper 3
-pub(crate) struct CNROM { 
-  cart: Cartridge,
+pub(crate) struct CNROM<R : Rom> { 
+  cart: Cartridge<R>,
   selected_bank: usize,
   is_16kb: bool,
-
-  // this mapper does not have a ram, but tests put status codes in mem ranges outside of the
-  // documented memory map for this mapper. this ram is only used in tests. TODO make better
-  // 0x6000 == Battery Backed Save or Work RAM (map globally in nesbus?)
-  ram_for_integration_test: [u8; kilobytes::KB1]
 }
 
-impl CNROM {
-  pub fn new(cart: Cartridge) -> Self {
+impl<R: Rom> CNROM<R> {
+  pub fn new(cart: Cartridge<R>) -> Self {
     let is_16kb = match cart.prg().len() {
       kilobytes::KB16 => true,
       kilobytes::KB32 => false,
@@ -31,18 +26,17 @@ impl CNROM {
       cart,
       selected_bank: 0,
       is_16kb,
-      ram_for_integration_test: [0; kilobytes::KB1]
     }
   }
 }
 
-impl Mapper for CNROM {
+impl<R : Rom> Mapper for CNROM<R> {
   fn mirroring(&self) -> crate::cartridge::Mirroring {
     self.cart.mirroring()
   }
 }
 
-impl Bus for CNROM {
+impl<R : Rom> Bus for CNROM<R> {
   fn read8(&self, address: u16) -> u8 {
     match address {
       0x0000..=0x1fff => self.cart.chr()[(self.selected_bank * BANK_SIZE) + address as usize],
@@ -55,46 +49,19 @@ impl Bus for CNROM {
         }
       }
       _ => {
-        self.ram_for_integration_test[address as usize]
+        self.cart.prg_ram()[address as usize]
       }
     }
   }
 
   fn write8(&mut self, val: u8, address: u16) {
     match address {
-      0x0000..=0x1fff => self.cart.chr_mut()[(self.selected_bank * BANK_SIZE) + address as usize] = val,
+      // 0x0000..=0x1fff => self.cart.chr_mut()[(self.selected_bank * BANK_SIZE) + address as usize] = val,
       0x8000..=0xffff => {
         self.selected_bank = (val & 0b00000011) as usize;
         // println!("mapper 3 selected bank: {}", self.selected_bank);
       },
-      _ => self.ram_for_integration_test[address as usize] = val
+      _ => self.cart.prg_ram_mut()[address as usize] = val
     }
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use common::kilobytes;
-  use mos6502::memory::Bus;
-
-  use crate::cartridge::Cartridge;
-
-  use super::CNROM;
-
-  #[test]
-  fn test_vectors_at_end() {
-    let mut kb32 = [0; kilobytes::KB32];
-    kb32[kilobytes::KB32-2..kilobytes::KB32].copy_from_slice(&[0xde, 0xad]);
-    let cart = Cartridge::new_test(&kb32, &[]);
-    let mapper = CNROM::new(cart);
-    assert_eq!(mapper.read8(0xfffe), 0xde);
-    assert_eq!(mapper.read8(0xffff), 0xad);
-
-    let mut kb16 = [0; kilobytes::KB16];
-    kb16[kilobytes::KB16-2..kilobytes::KB16].copy_from_slice(&[0xbe, 0xef]);
-    let cart = Cartridge::new_test(&kb16, &[]);
-    let mapper = CNROM::new(cart);
-    assert_eq!(mapper.read8(0xfffe), 0xbe);
-    assert_eq!(mapper.read8(0xffff), 0xef);
   }
 }

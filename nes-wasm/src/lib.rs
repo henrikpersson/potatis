@@ -1,5 +1,20 @@
-use nes::{cartridge::Cartridge, nes::{Nes, HostSystem, Shutdown}, joypad::{JoypadButton, JoypadEvent}, display};
+use nes::{cartridge::Cartridge, nes::{Nes, HostSystem, Shutdown}, joypad::{JoypadButton, JoypadEvent}, frame::{PixelFormat, SetPixel, DisplayRegionNTSC}};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+
+pub struct PixelFormatRGBA8888;
+
+impl PixelFormat for PixelFormatRGBA8888 {
+  const BYTES_PER_PIXEL: usize = 4;
+}
+
+impl SetPixel for PixelFormatRGBA8888 {
+  fn set_pixel(buf: &mut [u8], i: usize, rgb: (u8, u8, u8)) {
+    buf[i] = rgb.0;
+    buf[i + 1] = rgb.1;
+    buf[i + 2] = rgb.2;
+    buf[i + 3] = 0xff;
+  }
+}
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, Copy, Default)]
@@ -39,12 +54,12 @@ struct WasmHostSystem {
 }
 
 impl HostSystem for WasmHostSystem {
+  fn alloc_render_frame(&self) -> nes::frame::RenderFrame {
+    nes::frame::RenderFrame::new::<DisplayRegionNTSC, PixelFormatRGBA8888>()
+  }
+
   fn render(&mut self, frame: &nes::frame::RenderFrame) {
-    let ntsc = display::ntsc(frame.pixels());
-    let happy_js: Vec<u8> = ntsc.pixels.chunks_exact(3)
-      .flat_map(|p| [p[0], p[1], p[2], 0xff])
-      .collect();
-    self.browser.on_frame_ready(happy_js.as_ptr(), happy_js.len());
+    self.browser.on_frame_ready(frame.pixels().as_ptr(), frame.pixels().len());
   }
 
   fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) -> Shutdown {
@@ -98,11 +113,11 @@ pub struct NesWasm {
 #[wasm_bindgen]
 impl NesWasm {
   pub fn new(browser: BrowserNes, bin: &[u8]) -> Self {
-    let cart = if let Ok(cart) = Cartridge::load(bin) {
+    let cart = if let Ok(cart) = Cartridge::blow_dust_vec(bin.to_vec()) {
       cart
     } else {
       log("ERROR Failed to load. Invalid ROM. Loading nestest instead.");
-      Cartridge::load(include_bytes!("../../test-roms/nestest/nestest.nes")).unwrap()
+      Cartridge::blow_dust_vec(include_bytes!("../../test-roms/nestest/nestest.nes").to_vec()).unwrap()
     };
 
     log(format!("nes init! {}", cart).as_str());

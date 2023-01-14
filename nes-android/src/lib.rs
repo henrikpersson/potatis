@@ -1,4 +1,4 @@
-use std::{collections::HashSet};
+use std::{collections::HashSet, time::Instant};
 use jni::{
     objects::{JClass, JObject, GlobalRef},
     sys::{jlong, jbyteArray},
@@ -39,12 +39,12 @@ pub extern "C" fn Java_nes_potatis_Rust_init(
   let bindings = env.new_global_ref(bindings).unwrap();
   let rom = env.convert_byte_array(rom).unwrap();
   let rom = if rom.is_empty() {
-      include_bytes!("../../test-roms/nestest/nestest.nes")
+      include_bytes!("../../test-roms/nestest/nestest.nes").to_vec()
     } else {
-      &rom[..]
+      rom
     };
   
-  let cart = Cartridge::load(rom).unwrap();
+  let cart = Cartridge::blow_dust_vec(rom).unwrap();
   let host = AndroidHost::new(env, bindings);
   let nes = Nes::insert(cart, host);
 
@@ -70,21 +70,28 @@ pub extern "C" fn Java_nes_potatis_Rust_destroy(_: JNIEnv, _: JClass, ptr: jlong
 struct AndroidHost {
   env: JNIEnv<'static>,
   bindings: GlobalRef,
-  pressed: HashSet<JoypadButton>
+  pressed: HashSet<JoypadButton>,
+  time: Instant,
 }
 
 impl AndroidHost {
   fn new(env: JNIEnv<'static>, bindings: GlobalRef) -> Self {
-    Self { env, bindings, pressed: HashSet::with_capacity(8) }
+    Self { env, bindings, pressed: HashSet::with_capacity(8), time: Instant::now() }
   }
 }
 
 impl nes::nes::HostSystem for AndroidHost {
-  fn render(&mut self, frame: &nes::frame::RenderFrame) {
-    let pixels = nes::display::ntsc(frame.pixels()).pixels;
+  fn elapsed_millis(&self) -> usize {
+    self.time.elapsed().as_millis() as usize
+  }
 
+  fn delay(&self, dur: std::time::Duration) {
+    std::thread::sleep(dur)
+  }
+
+  fn render(&mut self, frame: &nes::frame::RenderFrame) {
     unsafe {
-      let jpixels: jbyteArray = self.env.byte_array_from_slice(&pixels).unwrap();
+      let jpixels: jbyteArray = self.env.byte_array_from_slice(frame.pixels()).unwrap();
       let jobj = JObject::from_raw(jpixels);
 
       // TODO: Is it possible/good for perf to cache the method lookup? call_method_unchecked.

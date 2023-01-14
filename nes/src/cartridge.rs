@@ -1,12 +1,42 @@
 
-use std::{fmt::Display, path::PathBuf};
+use core::{fmt::Display, ops::Range};
+use alloc::vec::Vec;
+use alloc::boxed::Box;
 use common::kilobytes;
-use crate::error::PotatisError;
+
+use self::error::CartridgeError;
 
 pub const MAGIC: [u8; 4] = [0x4e, 0x45, 0x53, 0x1a];
 pub const HEADER_SIZE: usize = 16;
 const PRG_ROM_BLOCK_SIZE: usize = kilobytes::KB16;
 const CHR_ROM_BLOCK_SIZE: usize = kilobytes::KB8;
+
+pub mod error {
+  use alloc::string::String;
+
+  #[derive(Debug)]
+  pub enum CartridgeError {
+    #[cfg(feature = "std")]
+    IO(std::io::Error),
+    InvalidCartridge(&'static str),
+    NotYetImplemented(String),
+  }
+
+  impl core::error::Error for CartridgeError {}
+
+  impl core::fmt::Display for CartridgeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+      write!(f, "{:?}", self)
+    }
+  }
+
+  #[cfg(feature = "std")]
+  impl From<std::io::Error> for CartridgeError {
+    fn from(e: std::io::Error) -> Self {
+      CartridgeError::IO(e)
+    }
+  }
+}
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -23,19 +53,18 @@ pub struct Header {
 }
 
 impl Header {
-  pub fn parse(bin: &[u8]) -> Result<Header, PotatisError> {
+  pub fn parse(bin: &[u8]) -> Result<Header, CartridgeError> {
     if bin.len() < HEADER_SIZE {
-      return Err(PotatisError::InvalidCartridge("strange size"));
+      return Err(CartridgeError::InvalidCartridge("strange size"));
     }
 
     let magic = &bin[0..4];
     if magic != MAGIC {
-      println!("{:?}", magic);
-      return Err(PotatisError::InvalidCartridge("magic"));
+      return Err(CartridgeError::InvalidCartridge("magic"));
     }
 
     Ok(Header {
-      magic: magic.try_into().map_err(|_| PotatisError::InvalidCartridge("magic 2"))?,
+      magic: magic.try_into().map_err(|_| CartridgeError::InvalidCartridge("magic 2"))?,
       prg_rom_blocks: bin[4],
       chr_rom_blocks: bin[5],
       flags6: bin[6],
@@ -43,7 +72,7 @@ impl Header {
       flags8: bin[8],
       flags9: bin[9],
       flags10: bin[10],
-      padding: bin[11..16].try_into().map_err(|_| PotatisError::InvalidCartridge("padding"))?,
+      padding: bin[11..16].try_into().map_err(|_| CartridgeError::InvalidCartridge("padding"))?,
     })
   }
 
@@ -65,7 +94,7 @@ pub enum MapperType {
 }
 
 impl TryFrom<&Header> for MapperType {
-  type Error = PotatisError;
+  type Error = CartridgeError;
 
   fn try_from(header: &Header) -> Result<Self, Self::Error> {
     let id: u8 = (header.flags7 & 0xf0) | header.flags6 >> 4;
@@ -75,7 +104,7 @@ impl TryFrom<&Header> for MapperType {
       2 => Ok(MapperType::Uxrom),
       3 => Ok(MapperType::Cnrom),
       4 => Ok(MapperType::Mmc3),
-      _ => Err(PotatisError::NotYetImplemented(format!("Mapper {}", id)))
+      _ => Err(CartridgeError::NotYetImplemented(format!("Mapper {}", id)))
     }
   }
 }
@@ -89,50 +118,97 @@ pub enum Mirroring {
   SingleScreenLower,
 }
 
-#[derive(PartialEq, Eq)]
-pub struct Cartridge {
-  mirroring: Mirroring,
-  prg_rom: Vec<u8>,
-  chr_rom: Vec<u8>,
-  mapper: MapperType,
-  uses_chr_ram: bool,
-  format: Format
+pub trait Rom {
+  fn len(&self) -> usize;
+  fn get(&self) -> &[u8];
 }
 
-impl Cartridge {
-  pub fn blow_dust(path: PathBuf) -> Result<Cartridge, PotatisError> {
-    let bin = std::fs::read(path)?;
-    Self::load(&bin)
+pub struct HeapRom(Vec<u8>);
+
+impl Rom for HeapRom {
+  fn len(&self) -> usize {
+    self.0.len()
   }
 
-  pub fn load(bin: &[u8]) -> Result<Cartridge, PotatisError> {
+  fn get(&self) -> &[u8] {
+    &self.0
+  }
+}
+
+pub struct EmbeddedRom(&'static [u8]);
+
+impl Rom for EmbeddedRom {
+  fn len(&self) -> usize {
+    self.0.len()
+  }
+
+  fn get(&self) -> &[u8] {
+    &self.0
+  }
+}
+
+#[derive(PartialEq, Eq)]
+pub struct Cartridge<R : Rom> { 
+  rom: R,
+  mirroring: Mirroring,
+  prg: Range<usize>,
+  chr: Range<usize>,
+  chr_ram: Option<Box<[u8; CHR_ROM_BLOCK_SIZE]>>,
+  // PRG RAM is optional for some mappers, but 8kb is wastable.
+  // It's also used by some test ROMs anyways.
+  prg_ram: Box<[u8; kilobytes::KB8]>,
+  mapper: MapperType,
+  format: Format,
+}
+
+impl Cartridge<HeapRom> {
+  #[cfg(feature = "std")]
+  pub fn blow_dust(path: std::path::PathBuf) -> Result<Cartridge<HeapRom>, CartridgeError> {
+    let rom = std::fs::read(path)?;
+    Cartridge::load(HeapRom(rom))
+  }
+
+  pub fn blow_dust_vec(rom: Vec<u8>) -> Result<Cartridge<HeapRom>, CartridgeError> {
+    Cartridge::load(HeapRom(rom))
+  }
+}
+
+impl Cartridge<EmbeddedRom> {
+  pub fn blow_dust_no_heap(rom: &'static [u8]) -> Result<Cartridge<EmbeddedRom>, CartridgeError> {
+    Cartridge::load(EmbeddedRom(rom))
+  }
+}
+
+impl<R : Rom> Cartridge<R> {
+  pub fn load(rom: R) -> Result<Cartridge<R>, CartridgeError> {
+    let bin = rom.get();
     if bin.len() < HEADER_SIZE + PRG_ROM_BLOCK_SIZE || bin[0..4] != MAGIC {
-      return Err(PotatisError::InvalidCartridge("strange size"));
+      return Err(CartridgeError::InvalidCartridge("strange size"));
     }
     
     let header = Header::parse(bin)?;
     if header.magic != MAGIC {
-      return Err(PotatisError::InvalidCartridge("magic"));
+      return Err(CartridgeError::InvalidCartridge("magic"));
     }
 
     let format = if (header.flags7 & 0x0c) == 0x08 { Format::Nes2 } else { Format::Ines };
     // if format == Format::Nes2 {
-      // return Err(PotatisError::NotYetImplemented("NES 2.0".into()));
+      // return Err(CartridgeError::NotYetImplemented("NES 2.0".into()));
     // }
     
     let mapper = MapperType::try_from(&header)?;
 
     let skip_trainer = header.flags6 & 0b100 != 0;
     if skip_trainer || (header.flags6 & (1 << 3)) != 0 {
-      return Err(PotatisError::NotYetImplemented("Trainer".into()));
+      return Err(CartridgeError::NotYetImplemented("Trainer".into()));
     }
 
     // if header.flags6 & 0b10 != 0 {
-    //   return Err(PotatisError::NotYetImplemented("Cartridge contains battery-backed PRG RAM ($6000-7FFF) or other persistent memory".into()));
+    //   return Err(CartridgeError::NotYetImplemented("Cartridge contains battery-backed PRG RAM ($6000-7FFF) or other persistent memory".into()));
     // }
 
     if header.flags6 & 0b1000 != 0 {
-      return Err(PotatisError::NotYetImplemented("cartidge fiddles w VRAM address space..".into()));
+      return Err(CartridgeError::NotYetImplemented("cartidge fiddles w VRAM address space..".into()));
     }
 
     let mut mirroring = match header.flags6 & 1 {
@@ -147,25 +223,29 @@ impl Cartridge {
     let prg_size = (header.prg_rom_blocks as usize) * PRG_ROM_BLOCK_SIZE; 
     let prg_start = HEADER_SIZE;
     let prg_end = prg_start + prg_size;
-    let prg_rom = bin[prg_start..prg_end].to_vec();
 
-    let mut uses_chr_ram = false;
-    let chr_rom = if header.chr_rom_blocks == 0 {
-      uses_chr_ram = true;
-      vec![0; CHR_ROM_BLOCK_SIZE]
+    let uses_chr_ram = header.chr_rom_blocks == 0;
+    let chr_range = if uses_chr_ram {
+      0..CHR_ROM_BLOCK_SIZE
     } else {
       let chr_start = prg_end;
       let chr_size = (header.chr_rom_blocks as usize) * CHR_ROM_BLOCK_SIZE;
-      bin[chr_start..(chr_start + chr_size)].to_vec()
+      let chr_end = chr_start + chr_size;
+      chr_start..chr_end
     };
+
+    let chr_ram = uses_chr_ram
+      .then_some(Box::new([0; CHR_ROM_BLOCK_SIZE]));
     
     Ok(Cartridge {
-      prg_rom,
-      chr_rom,
+      prg: prg_start..prg_end,
+      chr: chr_range,
+      rom: rom,
       mirroring,
       mapper,
-      uses_chr_ram,
-      format
+      format,
+      chr_ram,
+      prg_ram: Box::new([0; kilobytes::KB8])
     })
   }
 
@@ -174,41 +254,38 @@ impl Cartridge {
   }
 
   pub fn prg(&self) -> &[u8] {
-    &self.prg_rom
+    // TODO: expensive to slice each r/w? have slice refs ready?
+    &self.rom.get()[self.prg.start..self.prg.end]
   }
 
   pub fn chr(&self) -> &[u8] {
-    &self.chr_rom
+    if let Some(chr_ram) = &self.chr_ram {
+      &chr_ram[..]
+    } else {
+      &self.rom.get()[self.chr.start..self.chr.end]
+    }
   }
 
-  pub fn chr_mut(&mut self) -> &mut [u8] {
-    &mut self.chr_rom
+  pub fn chr_ram(&mut self) -> &mut [u8] {
+    &mut self.chr_ram.as_mut().unwrap()[..]
+  }
+
+  pub fn prg_ram_mut(&mut self) -> &mut [u8] {
+    &mut self.prg_ram.as_mut()[..]
+  }
+
+  pub fn prg_ram(&self) -> &[u8] {
+    &self.prg_ram[..]
   }
 
   pub fn mapper_type(&self) -> MapperType {
     self.mapper
   }
-
-  pub fn chr_ram_mode(&self) -> bool {
-    self.uses_chr_ram
-  }
-
-  #[cfg(test)]
-  pub fn new_test(prg_rom: &[u8], chr_rom: &[u8]) -> Self {
-    Cartridge {
-      prg_rom: prg_rom.to_vec(),
-      chr_rom: chr_rom.to_vec(),
-      mirroring: Mirroring::Vertical,
-      mapper: MapperType::Nrom,
-      uses_chr_ram: false,
-      format: Format::Ines
-    }
-  }
 }
 
-impl Display for Cartridge {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let chr_ram_or_rom = if self.chr_ram_mode() { " RAM" } else { "" };
+impl<R : Rom> Display for Cartridge<R> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let chr_ram_or_rom = if self.chr_ram.is_some() { " RAM" } else { "" };
     write!(f, 
       "[{:?}] Mapper: {:?}, Mirroring: {:?}, CHR{}: {}x{}K, PRG: {}x{}K", 
       self.format, self.mapper, self.mirroring, chr_ram_or_rom,
@@ -218,30 +295,20 @@ impl Display for Cartridge {
   }
 }
 
-impl std::fmt::Debug for Cartridge {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("Cartridge")
-      .field("mirroring", &self.mirroring)
-      .field("prg_rom", &"...")
-      .field("chr_rom", &"...")
-      .field("mapper", &self.mapper)
-      .field("format", &self.format)
-      .field("uses_chr_ram", &self.uses_chr_ram)
-      .finish()
-  }
-}
-
 #[cfg(test)]
 mod tests {
+  use alloc::string::ToString;
+  use crate::cartridge::EmbeddedRom;
+
   use super::Cartridge;
 
-  fn assert_cart(r: &[u8], s: &str) {
-    assert_eq!(Cartridge::load(r).unwrap().to_string(), s);
+  fn assert_cart(r: &'static [u8], s: &str) {
+    assert_eq!(Cartridge::load(EmbeddedRom(r)).unwrap().to_string(), s);
   }
 
   #[test]
   fn cart_invalid_len() {
-    assert!(Cartridge::load(&[b'N', b'E', b'S']).is_err())
+    assert!(Cartridge::load(EmbeddedRom(&[b'N', b'E', b'S'])).is_err())
   }
 
   #[test]

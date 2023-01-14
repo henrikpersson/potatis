@@ -1,5 +1,6 @@
 
-use std::{cell::{RefCell}, rc::Rc};
+use core::cell::RefCell;
+use alloc::rc::Rc;
 use crate::{frame::RenderFrame, trace, ppu::state::{Phase, Rendering}, mappers::Mapper};
 use super::{palette::Palette, vram::Vram, state::State};
 
@@ -28,7 +29,7 @@ enum Register {
 
 impl From<u16> for Register {
   fn from(n: u16) -> Register {
-    unsafe { std::mem::transmute(n) }
+    unsafe { core::mem::transmute(n) }
   }
 }
 
@@ -73,12 +74,12 @@ pub struct Ppu {
 
 #[allow(dead_code)]
 impl Ppu {
-  pub fn new(mapper: Rc<RefCell<dyn Mapper>>) -> Ppu {
+  pub fn new(mapper: Rc<RefCell<dyn Mapper>>, frame: RenderFrame) -> Ppu {
     Ppu {
       vram: Vram::new(mapper.clone()),
       rom_mapper: mapper,
       palette: Palette::new(),
-      frame: RenderFrame::default(),
+      frame,
       state: State::default(),
 
       oam: [0; 256],
@@ -442,10 +443,10 @@ impl Ppu {
     self.rom_mapper.borrow().read8(address)
   }
 
-  pub fn cpu_oam_dma(&mut self, mem: &[u8]) {
-    assert!(mem.len() == 256);
+  pub fn cpu_oam_dma(&mut self, mem: impl Iterator<Item = u8>) {
+    // assert!(mem.len() == 256);
     for byte in mem {
-      self.oam[self.oam_address as usize] = *byte;
+      self.oam[self.oam_address as usize] = byte;
       self.oam_address = self.oam_address.wrapping_add(1);
     }
     // assert!(self.oam_address == 0x0000);

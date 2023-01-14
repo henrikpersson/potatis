@@ -1,21 +1,17 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate alloc;
+
 mod address_mode;
 mod instructions;
 pub mod cpu;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "debugger")]
 pub mod debugger;
 pub mod mos6502;
 pub mod memory;
 
-
-#[cfg(target_arch = "wasm32")]
+#[cfg(not(feature = "debugger"))]
 pub mod debugger {
-  use crate::{cpu::Cpu, instructions::Instruction};
-
   #[derive(Default)]
   pub struct Debugger;
-
-  impl Debugger {
-    pub fn on_tick(&mut self, _: &Cpu, _: &Instruction) {}
-    pub fn last_opcode(&self) -> u8 { 0 }
-  } 
 }

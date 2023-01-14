@@ -22,11 +22,12 @@ struct Cli {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   let args: Cli = Cli::from_args();
   println!("Loading {:?}.", args.path);
-  
-  let cart = Cartridge::blow_dust(args.path)?;
-  println!("Loaded! {}", cart);
 
-  let mut nes = Nes::insert(cart, SdlHostSystem::new());
+  let cartridge = Cartridge::blow_dust(args.path)?;
+  println!("Loaded! {}", cartridge);
+
+  let mut nes = Nes::insert(cartridge, SdlHostSystem::new());
+  nes.show_fps(std::env::var("SHOW_FPS").is_ok());
 
   let debugger = nes.debugger();
   debugger.verbose(args.verbose);

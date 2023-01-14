@@ -1,4 +1,6 @@
-use std::ops::RangeInclusive;
+use core::ops::RangeInclusive;
+
+use alloc::{vec::Vec, boxed::Box};
 
 const MEM_SIZE: usize = 0xffff + 1;
 
@@ -11,11 +13,11 @@ pub trait Bus {
   }
 }
 
-pub struct Memory([u8; MEM_SIZE]);
+pub struct Memory(Box<[u8; MEM_SIZE]>);
 
 impl Memory {
   pub fn load(program: &[u8], base: u16) -> Self {
-    let mut mem = [0x00; MEM_SIZE];
+    let mut mem = Box::new([0x00; MEM_SIZE]);
     let base = base as usize;
     let end = base + program.len() - 1;
     mem[base..=end].copy_from_slice(program);

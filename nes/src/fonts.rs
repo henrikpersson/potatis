@@ -1,104 +1,99 @@
-use std::collections::HashMap;
-
+use phf::phf_map;
 use crate::frame::RenderFrame;
 
 const W: usize = 5;
 
-lazy_static! {
-  static ref FONTS: HashMap<char, &'static str> = {
-    let mut m = HashMap::with_capacity(10);
-    m.insert('0', r#"
+static FONTS: phf::Map<char, &'static str> = phf_map! {
+  '0' => r#"
     ....
     .  .
     .  .
     .  .
     .  .
     .  .
-    ...."#);
+    ...."#,
 
-    m.insert('1', r#"
+  '1' => r#"
      ..
       .
       .
       .
       .
       .
-      ."#);
+      ."#,
 
-    m.insert('2', r#"
+  '2' => r#"
     ...
       .
       .
       .
     ... 
     .   
-    ...."#);
+    ...."#,
 
-    m.insert('3', r#"
+  '3' => r#"
     ...
       .
       .
     ...
       .
       .
-    ..."#);
+    ..."#,
 
-    m.insert('4', r#"
+  '4' => r#"
     .  .
     .  .
     .  .
     ....
        .
        .
-       ."#);
+       ."#,
 
-    m.insert('5', r#"
+  '5' => r#"
     ....
     .  
     .  
     ....
        .
        .
-    ...."#);
+    ...."#,
 
-    m.insert('6', r#"
+  '6' => r#"
     ....
     .  
     .  
     ....
     .  .
     .  .
-    ...."#);
+    ...."#,
 
-    m.insert('7', r#"
+  '7' => r#"
     ....
        .
        .
       .  
       . 
      .
-     .  "#);
+     .  "#,
 
-  m.insert('8', r#"
+  '8' => r#"
     ....
     .  .
     .  .
     ....
     .  .
     .  .
-    ...."#);
+    ...."#,
 
-    m.insert('9', r#"
+  '9' => r#"
     ....
     .  .
     .  .
     ....
        .
        .
-       ."#);
-    m
-  };
-}
+       ."#
+ };
 
 pub fn draw(s: &str, pos: (usize, usize), frame: &mut RenderFrame) {
   let fonts = s.chars().map(|c| FONTS.get(&c).expect("font missing"));
@@ -123,5 +118,4 @@ pub fn draw(s: &str, pos: (usize, usize), frame: &mut RenderFrame) {
       }
     });
   }
-  
 }
