@@ -49,7 +49,10 @@ impl<R : Rom> Bus for NROM<R> {
     }
   }
 
-  fn write8(&mut self, _: u8, _: u16) {
-    
+  fn write8(&mut self, v: u8, address: u16) {
+    match address {
+      0x0000..=0x1fff => self.cart.chr_ram()[address as usize] = v,
+      _ => (),
+    }
   }
 }

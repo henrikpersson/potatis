@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "common", 
+  "mos6502", 
+  "nes",
+  "nes-cloud"
+]

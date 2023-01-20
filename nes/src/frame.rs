@@ -80,6 +80,10 @@ impl RenderFrame {
     (self.set_pixel_fn)(&mut self.buf, i, rgb);
   }
 
+  pub fn replace_buf(&mut self, buf: &[u8]) {
+    self.buf = buf.to_vec();
+  }
+
   pub fn pixels_pal(&self) -> &[u8] {
     &self.buf
   }

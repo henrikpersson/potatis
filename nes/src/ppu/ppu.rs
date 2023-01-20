@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use crate::{frame::RenderFrame, trace, ppu::state::{Phase, Rendering}, mappers::Mapper, cartridge::Mirroring};
 use super::{palette::Palette, vram::Vram, state::State};
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug)]
 struct Sprite {
   pixels: [u8; 8], // Only 8 pixels per line
   priority: bool, // Priority (0: in front of background; 1: behind background)
@@ -478,7 +478,7 @@ impl Ppu {
     } else {
       v &= !0x7000;
       let mut y = (v & 0x3e0) >> 5;
-      if y == 29 { // TODO: match y
+      if y == 29 {
         y = 0;
         v ^= 0x800
       } else if y == 31 {

@@ -6,6 +6,7 @@
 - `/nes` - A very incomplete NES emulator.
 - `/nes-sdl` - Native target using SDL.
 - `/nes-wasm` - Browser target using WASM.
+- `/nes-cloud` - NES-as-a-service. Clientless cloud gaming with netcat and terminal rendering.
 - `/nes-embedded` - Embedded target for RP-2040 (Raspberry Pi Pico).
 - `/nes-android` - Android target using JNI.
 
@@ -80,6 +81,28 @@ loop {
 
 Try it here: https://henrikpersson.github.io/nes/index.html
 
+## /nes-cloud
+
+Cloud gaming is the [next big thing](http://stadia.google.com). Obviously, Potatis needs to support it as well. No client needed,
+only a terminal and netcat.
+
+### Usage
+```
+stty -icanon && nc play-nes.org 4444
+```
+
+_`stty -icanon` disables input buffering for your terminal, sending input directly to netcat. You can also connect without it but then you'd have to press <kbd>ENTER</kbd> after each key press._
+
+### Bring your own ROM
+```
+stty -icanon && cat zelda.nes - | nc play-nes.org 4444
+```
+
+### Rendering
+
+- [Sixel](https://en.wikipedia.org/wiki/Sixel) (port 6666) is recommended if your terminal supports it. iTerm2 does.
+- Unicode color (port 5555) works by using the unicode character ▀ "Upper half block", `U+2580` to draw the screen. Since the lower part of the character is transparent, [ANSI color codes](https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit) can be used to simultaneously draw two horizontal lines by setting the block's foreground and background color. Unfortunately the resulting frame is still too large to fit in a normal terminal window, so when using this mode **you have to decrease your terminal's font size a lot**.
+- ASCII (port 7777). No color, no unicode, just ASCII by calculating luminance for each RGB pixel. Same here, **you have to decrease your terminal's font size a lot** to see the whole picture.
 
 ## /nes-embedded
 It also runs on a RP-Pico with only 264kB available RAM! Without any optimizations it started out at ~0.5 FPS. But after some overclocking, and offloading the display rendering to the second CPU core, it now runs at a steady 5 FPS.
