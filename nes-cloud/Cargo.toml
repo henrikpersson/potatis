@@ -1,0 +1,38 @@
+[package]
+name = "nes-cloud"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "libcloud"
+path = "src/shared/lib.rs"
+doctest = false
+
+[[bin]]
+name = "nes-cloud-app"
+path = "src/server/main.rs"
+
+[[bin]]
+name = "nes-cloud-instance"
+path = "src/instance/main.rs"
+
+[dependencies]
+structopt = "0.3.13"
+serde = { version = "1.0.147", features = ["derive"] }
+serde_yaml = "0.9.17"
+log = "0.4.17"
+flexi_logger = "0.24.1"
+ansi_colours = "1.1.1"
+crc32fast = "1.3.2"
+nes = { path = "../nes" }
+sixel-rs = "0.3.3"
+tempfile = "3.3.0"
+md5 = "0.7.0"
+png = "0.17.7"
+
+[dev-dependencies]
+lazy_static = "1.4.0"
+assert_cmd = "2.0"
+rand = "0.8.5"

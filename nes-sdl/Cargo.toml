@@ -4,12 +4,6 @@ version = "0.1.0"
 edition = "2021"
 default-run = "nes-sdl"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-#[[bin]]
-#name = "nes-sdl"
-#path = "src/nes-sdl.rs"
-
 [dependencies]
 structopt = "0.3.13"
 sdl2 = "0.35.2"

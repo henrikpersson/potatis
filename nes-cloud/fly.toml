@@ -1,0 +1,44 @@
+# fly.toml file generated for nes-cloud on 2023-03-10T12:27:39+01:00
+
+app = "nes-cloud"
+kill_signal = "SIGINT"
+kill_timeout = 5
+primary_region = "sjc"
+processes = []
+
+[env]
+
+[deploy]
+  strategy = "immediate"
+
+[experimental]
+  allowed_public_ports = []
+  auto_rollback = false
+
+[[services]]
+  internal_port = 4444
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = "4444"
+
+[[services]]
+  internal_port = 5555
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = "5555"
+
+[[services]]
+  internal_port = 6666
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = "6666"
+
+[[services]]
+  internal_port = 7777
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = "7777"

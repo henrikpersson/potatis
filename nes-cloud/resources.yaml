@@ -1,0 +1,79 @@
+tx_mb_limit: 2000
+included_roms:
+  - "./included-roms/2048.nes"
+  - "./included-roms/life.nes"
+  - "./included-roms/Nova_the_Squirrel.nes"
+  - "./included-roms/nestest.nes"
+fps:
+  sixel: 30
+  color: 10
+  ascii: 20
+strings:
+  Welcome: |+
+    # Welcome to NES-as-a-service!
+    Current players: {}
+    
+    Run this with unbuffered TTY input for the best experience:
+    $ stty -icanon && nc todo.nes.cloud 4444
+    
+    More info: https://github.com/henrikpersson/potatis#nes-cloud
+
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  RomSelection: |-
+    # Select a NES game
+    
+    1. 2048 (https://bitbucket.org/tsone/neskit/)
+    2. Game of Life (by YGGI)
+    3. Nova the Squirrel (https://github.com/NovaSquirrel/NovaTheSquirrel)
+    4. nestest - emulation testing ROM (by Kevin "kevtris" Horton)
+    
+    > 
+  InvalidRomSelection: |+
+    
+    Invalid input. Available options are: 1, 2, 3, 4
+  InvalidRom: |+
+    
+    The inserted ROM is corrupt/unsupported: {}
+  RomInserted: |+
+    
+    You have inserted a ROM:
+    {}
+    {}
+  RenderModeSelection: |-
+    
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    # Now, select a render mode
+    
+    1. Sixel
+      Best option for iTerm2 and other terminals with Sixel suppport.
+        
+    2. Unicode color
+      For this you need to decrease your terminal font size (Ctrl -).
+      Preferably until you can't read this text anymore.
+            
+    3. Straight up ASCII
+      If you hate colors. Or want a higher framerate (lol).
+      Same thing goes for font size, make it tiny.
+      
+    > 
+  InvalidRenderModeSelection: |+
+    
+    Invalid input. Available options are: 1, 2, 3
+  AnyKeyToStart: |-
+  
+    Selected render mode: {}
+
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    
+    # Controls
+    D-pad: WASD, Start: [Enter], Select: [Space], B: B, A: N
+    
+    Press any key to boot.
+    > 
+  AlreadyConnected: |+
+    You already have an active session.
+
+  TooManyPlayers: |+
+    Max concurrent players limit reached. Try again!

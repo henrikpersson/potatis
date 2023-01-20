@@ -296,6 +296,12 @@ impl<R : Rom> Display for Cartridge<R> {
   }
 }
 
+impl<R : Rom> core::fmt::Debug for Cartridge<R> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    write!(f, "{self}")
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use alloc::string::ToString;
