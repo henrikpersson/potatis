@@ -5,9 +5,11 @@ members = [
   "nes", 
   "nes-sdl", 
   "nes-wasm", 
-  "nes-android", 
+  "nes-android"
+]
+exclude = [
   "nes-embedded",
-  "bench",
+  "profile"
 ]
 
 [profile.test]

@@ -4,6 +4,7 @@ use crate::{cpu::Cpu, memory::Bus, debugger::Debugger};
 
 pub struct Mos6502 {
   cpu: Cpu,
+  #[allow(dead_code)]
   debugger: Debugger,
   total_cycles: usize,
   total_ticks: usize,

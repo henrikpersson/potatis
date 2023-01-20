@@ -143,7 +143,7 @@ impl Rom for EmbeddedRom {
   }
 
   fn get(&self) -> &[u8] {
-    &self.0
+    self.0
   }
 }
 
@@ -240,7 +240,7 @@ impl<R : Rom> Cartridge<R> {
     Ok(Cartridge {
       prg: prg_start..prg_end,
       chr: chr_range,
-      rom: rom,
+      rom,
       mirroring,
       mapper,
       format,
@@ -254,12 +254,13 @@ impl<R : Rom> Cartridge<R> {
   }
 
   pub fn prg(&self) -> &[u8] {
-    // TODO: expensive to slice each r/w? have slice refs ready?
+    // TODO: Perf, expensive to slice each r/w? have slice refs ready?
     &self.rom.get()[self.prg.start..self.prg.end]
   }
 
   pub fn chr(&self) -> &[u8] {
-    if let Some(chr_ram) = &self.chr_ram {
+    // TODO: Perf, get rid of this branch
+    if let Some(chr_ram) = &self.chr_ram { 
       &chr_ram[..]
     } else {
       &self.rom.get()[self.chr.start..self.chr.end]

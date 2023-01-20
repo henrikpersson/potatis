@@ -44,79 +44,64 @@ impl SetPixel for PixelFormatRGB565 {
   }
 }
 
-pub trait DisplayRegion {  
-  const WIDTH: usize;
-  const HEIGHT: usize;
-  const OVERSCAN_PIXELS: usize;
-}
+// Also PAL res
+pub const NES_WIDTH: usize = 256;
+pub const NES_HEIGHT: usize = 240;
 
-pub struct DisplayRegionNTSC;
-
-impl DisplayRegion for DisplayRegionNTSC {
-  const WIDTH: usize = 240;
-  const HEIGHT: usize = 224;
-  const OVERSCAN_PIXELS: usize = 8;
-}
-
-pub struct DisplayRegionPAL;
-
-impl DisplayRegion for DisplayRegionPAL {
-  const WIDTH: usize = 256;
-  const HEIGHT: usize = 240;
-  const OVERSCAN_PIXELS: usize = 0;
-}
+pub const NTSC_WIDTH: usize = 240;
+pub const NTSC_HEIGHT: usize = 224;
+const NTSC_OVERSCAN_PIXELS: usize = 8;
 
 pub struct RenderFrame {
-  width: usize,
   bytes_per_pixel: usize,
-  overscan_pixels: usize,
   buf: Vec<u8>,
-  set_pixel_fn: SetPixelFn 
+  set_pixel_fn: SetPixelFn,
+  pitch_ntsc: usize,
+  pitch_pal: usize,
 }
 
 impl RenderFrame {
-  pub fn new<DISPLAY, FORMAT>() -> Self
+  pub fn new<FORMAT>() -> Self
     where
-      DISPLAY : DisplayRegion,
       FORMAT : PixelFormat + SetPixel + 'static
   {
     Self {
-      width: DISPLAY::WIDTH,
       bytes_per_pixel: FORMAT::BYTES_PER_PIXEL,
-      overscan_pixels: DISPLAY::OVERSCAN_PIXELS,
-      buf: vec![0; DISPLAY::WIDTH * DISPLAY::HEIGHT * FORMAT::BYTES_PER_PIXEL],
-      set_pixel_fn: FORMAT::set_pixel
+      buf: vec![0; NES_WIDTH * NES_HEIGHT * FORMAT::BYTES_PER_PIXEL],
+      set_pixel_fn: FORMAT::set_pixel,
+      pitch_ntsc: NTSC_WIDTH * FORMAT::BYTES_PER_PIXEL,
+      pitch_pal: NES_WIDTH * FORMAT::BYTES_PER_PIXEL,
     }
   }
 
-  fn overscan(&self, x: &mut usize, y: &mut usize) {
-    // 0 == no draw
-    // width - 8 == no draw
-    // 8 == 0
-    if *x >= self.overscan_pixels { 
-      *x -= self.overscan_pixels;
-    }
-
-    if *y >= self.overscan_pixels {
-      *y -= self.overscan_pixels;
-    }
+  // The NES PPU always generates a 256x240 pixel picture.
+  pub fn set_pixel_xy(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {    
+    let i = ((y * NES_WIDTH) + x) * self.bytes_per_pixel;
+    (self.set_pixel_fn)(&mut self.buf, i, rgb);
   }
 
-  pub fn set_pixel_xy(&mut self, mut x: usize, mut y: usize, rgb: (u8, u8, u8)) {
-    self.overscan(&mut x, &mut y);
-
-    let i = ((y * self.width) + x) * self.bytes_per_pixel;
-    if i < self.buf.len() {
-      (self.set_pixel_fn)(&mut self.buf, i, rgb);
-    }
+  pub fn pixels_pal(&self) -> &[u8] {
+    &self.buf
   }
 
-  pub fn pixels(&self) -> &[u8] {
-    &self.buf[..]
+  // This is an iter to avoid allocations
+  pub fn pixels_ntsc(&self) -> impl Iterator<Item = u8> + '_ {
+    let buf_pitch = NES_WIDTH * self.bytes_per_pixel;
+    let overscan_pitch = NTSC_OVERSCAN_PIXELS * self.bytes_per_pixel;
+    self.buf.chunks(buf_pitch) // Chunk as rows
+      .skip(NTSC_OVERSCAN_PIXELS) // Skip first X rows
+      .map(move |row| &row[overscan_pitch..buf_pitch - overscan_pitch]) // Skip col edges
+      .take(NTSC_HEIGHT)
+      .flatten()
+      .copied()
   }
 
-  pub fn pitch(&self) -> usize {
-    self.width * self.bytes_per_pixel
+  pub fn pitch_ntsc(&self) -> usize {
+    self.pitch_ntsc
+  }
+
+  pub fn pitch_pal(&self) -> usize {
+    self.pitch_pal
   }
 }
 

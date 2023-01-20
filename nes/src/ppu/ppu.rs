@@ -1,7 +1,8 @@
 
 use core::cell::RefCell;
 use alloc::rc::Rc;
-use crate::{frame::RenderFrame, trace, ppu::state::{Phase, Rendering}, mappers::Mapper};
+use alloc::vec::Vec;
+use crate::{frame::RenderFrame, trace, ppu::state::{Phase, Rendering}, mappers::Mapper, cartridge::Mirroring};
 use super::{palette::Palette, vram::Vram, state::State};
 
 #[derive(Default, Clone, Copy)]
@@ -46,7 +47,7 @@ pub struct Ppu {
 
   oam: [u8; 256],
   oam_address: u8,
-  sprites: [Option<Sprite>; 8], // AKA secondary OAM
+  sprites: Vec<Sprite>, // AKA secondary OAM
 
   v: u16, // Current VRAM address (15 bits)
   t: u16, // Temporary VRAM address (15 bits); can also be thought of as the address of the top left onscreen tile.
@@ -74,9 +75,13 @@ pub struct Ppu {
 
 #[allow(dead_code)]
 impl Ppu {
-  pub fn new(mapper: Rc<RefCell<dyn Mapper>>, frame: RenderFrame) -> Ppu {
+  pub fn new(
+    mapper: Rc<RefCell<dyn Mapper>>,
+    cart_mirroring: Mirroring,
+    frame: RenderFrame,
+  ) -> Ppu {
     Ppu {
-      vram: Vram::new(mapper.clone()),
+      vram: Vram::new(mapper.clone(), cart_mirroring),
       rom_mapper: mapper,
       palette: Palette::new(),
       frame,
@@ -84,7 +89,7 @@ impl Ppu {
 
       oam: [0; 256],
       oam_address: 0,
-      sprites: [None; 8],
+      sprites: Vec::with_capacity(8),
 
       v: 0,
       t: 0,
@@ -340,11 +345,12 @@ impl Ppu {
   fn render_sprite_pixel(&mut self, x: usize, y: usize, bg_pixel_drawn: bool) {
     let x = x as u8;
 
-    let sprites_in_bounds = self.sprites.iter()
-      .filter_map(|s| s.as_ref())
-      .filter(|s| x >= s.x && x < (s.x + 8));
+    for sprite in self.sprites.iter() {
+      if x < sprite.x || x >= (sprite.x.saturating_add(8)) {
+        // Not in bounds
+        continue;
+      }
 
-    for sprite in sprites_in_bounds {
       let pixel = 7 - (x - sprite.x);
       let entry = sprite.pixels[pixel as usize];
       let transparent = (entry & 0x03) == 0;
@@ -367,7 +373,7 @@ impl Ppu {
 
   fn load_sprites_for_next_scanline(&mut self) {
     // Clear current sprites
-    self.sprites = [None; 8];
+    self.sprites.clear();
 
     let sprite_height = if self.sprite_size_16 { 16 } else { 8 };
     let next_line = self.state.scanline() as u8 + 1;
@@ -427,7 +433,7 @@ impl Ppu {
           *p = ((first_plane >> i) & 0x1) | ((second_plane >> i & 0x1) << 1) | ((attr & 0x3) << 2);
         }
 
-        self.sprites[sprite_n] = Some(Sprite {
+        self.sprites.push(Sprite {
           pixels,
           priority: (attr & 0x20) == 0x20,
           x,

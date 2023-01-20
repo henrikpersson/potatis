@@ -15,7 +15,7 @@ const NESTEST_SUCCESS: u16 = 0xc68b; // Here it starts writing to APU, which is 
 const NESTEST_RES_BYTE2: u16 = 0x0002;
 const NESTEST_RES_BYTE3: u16 = 0x0003;
 
-const ENABLE_TEST_CYCLES: bool = true;
+const ENABLE_TEST_CYCLES: bool = false;
 
 #[test]
 fn nestest() {

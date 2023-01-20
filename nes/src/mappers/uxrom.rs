@@ -11,6 +11,8 @@ pub struct UxROM<R : Rom> {
   num_banks: usize,
 }
 
+impl<R : Rom> Mapper for UxROM<R> {}
+
 impl<R : Rom> UxROM<R> {
   pub fn new(cart: Cartridge<R>) -> Self {
     Self { 
@@ -18,12 +20,6 @@ impl<R : Rom> UxROM<R> {
       cart, 
       bank: 0 
     }
-  }
-}
-
-impl<R : Rom> Mapper for UxROM<R> {
-  fn mirroring(&self) -> crate::cartridge::Mirroring {
-    self.cart.mirroring()
   }
 }
 

@@ -1,5 +1,4 @@
 # 🥔 Potatis
-
 <img width="400" alt="smb" src="screenshots/smb.png"><img width="400" alt="smb3" src="screenshots/smb3.png">
 <img width="400" alt="bb" src="screenshots/bb.png"><img width="400" alt="dr" src="screenshots/dr.png">
 
@@ -7,6 +6,7 @@
 - `/nes` - A very incomplete NES emulator.
 - `/nes-sdl` - Native target using SDL.
 - `/nes-wasm` - Browser target using WASM.
+- `/nes-embedded` - Embedded target for RP-2040 (Raspberry Pi Pico).
 - `/nes-android` - Android target using JNI.
 
 ## /mos6502
@@ -19,7 +19,7 @@ let mut machine = Mos6502::new(cpu);
 
 loop {
   machine.tick()
-  println!("{}", machine); // Will print nestest-like output
+  println!("{}", machine); // Prints nestest-like output
 }
 ```
 
@@ -45,7 +45,7 @@ Supported mappers:
 - MMC3 (mapper 4)
 
 ```rust
-impl nes::HostSystem for MyHost {
+impl nes::HostPlatform for MyHost {
   fn render(&mut self, frame: &RenderFrame) {
     // frame.pixels() == 256 * 240 * 3 RGB array
   }
@@ -80,9 +80,28 @@ loop {
 
 Try it here: https://henrikpersson.github.io/nes/index.html
 
-## /nes-android
 
-<img height="300" alt="bb" src="screenshots/android.png" align="right">
+## /nes-embedded
+It also runs on a RP-Pico with only 264kB available RAM! Without any optimizations it started out at ~0.5 FPS. But after some overclocking, and offloading the display rendering to the second CPU core, it now runs at a steady 5 FPS.
+
+Total heap usage, single-core: 135kB
+<br>
+Total heap usage, multi-core: 243kB (2x frame buffers)
+
+<img width="600" alt="smb" src="screenshots/pico.jpg">
+
+
+_The second Pico on the picture is wired up as a SWD debugger/flasher. The display is a [ST7789 by Adafruit](https://www.adafruit.com/product/4311)_.
+<br>
+
+```
+cd nes-embedded
+ROM=/path/to/rom.nes cargo run --release
+```
+
+If you don't have a debug-probe setup, change the runner in `.cargo/config` to use a normal `elf2uf2`.
+
+## /nes-android
 
 1. Download Android NDK and `rustup target add [target]`
 2. Configure your target(s) in `~/.cargo/config` with the linker(s) provided by the Android NDK

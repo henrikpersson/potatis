@@ -1,7 +1,7 @@
 use core::panic;
 use common::kilobytes;
 use mos6502::memory::Bus;
-
+use alloc::boxed::Box;
 use crate::cartridge::{Cartridge, Mirroring, Rom};
 
 use super::Mapper;
@@ -25,7 +25,7 @@ pub struct MMC3<R : Rom> {
   prg_rom_bank_mode: PrgBankMode,
 
   chr_rom_bank_mode: ChrBankMode,
-  mirroring: Option<Mirroring>,
+  mirroring_cb: Option<Box<dyn FnMut(&Mirroring)>>,
 
   registers: [u8; 8],
   register_to_update: u8, // 3 bits
@@ -43,7 +43,7 @@ impl<R : Rom> MMC3<R> {
       cart,
       prg_rom_bank_mode: PrgBankMode::Swap8000FixC000_0,
       chr_rom_bank_mode: ChrBankMode::TwoKbAt0000_0,
-      mirroring: None,
+      mirroring_cb: None,
       registers: [0; 8],
       register_to_update: 0,
       irq_enabled: false,
@@ -106,13 +106,8 @@ impl<R : Rom> MMC3<R> {
 }
 
 impl<R : Rom> Mapper for MMC3<R> {
-  fn mirroring(&self) -> crate::cartridge::Mirroring {
-    // This bit has no effect on cartridges with hardwired 4-screen VRAM. 
-    // In the iNES and NES 2.0 formats, this can be identified through bit 3 of byte $06 of the header. 
-    if self.cart.mirroring() == Mirroring::HardwiredFourScreen || self.mirroring.is_none() {
-      return self.cart.mirroring()
-    }
-    self.mirroring.unwrap()
+  fn on_runtime_mirroring(&mut self, cb: Box<dyn FnMut(&Mirroring)>) {
+    self.mirroring_cb = Some(cb);
   }
 
   fn irq(&mut self) -> bool {
@@ -171,8 +166,18 @@ impl<R : Rom> Bus for MMC3<R> {
       }
       0xa000..=0xbfff => {
         if even {
-          // Mirroring
-          self.mirroring = if val & 1 == 1 { Some(Mirroring::Horizontal) } else { Some(Mirroring::Vertical) };
+          let runtime_mirroring = if val & 1 == 1 { 
+            Mirroring::Horizontal 
+          } else { 
+            Mirroring::Vertical 
+          };
+
+          if self.cart.mirroring() != runtime_mirroring {
+            let cb = self.mirroring_cb
+              .as_mut()
+              .expect("mirroring changed, no one to tell");
+            (*cb)(&runtime_mirroring)
+          }
         }
         // Odd: PRG RAM protect
       }

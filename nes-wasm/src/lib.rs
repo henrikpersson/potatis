@@ -1,4 +1,4 @@
-use nes::{cartridge::Cartridge, nes::{Nes, HostSystem, Shutdown}, joypad::{JoypadButton, JoypadEvent}, frame::{PixelFormat, SetPixel, DisplayRegionNTSC}};
+use nes::{cartridge::Cartridge, nes::{Nes, HostPlatform, Shutdown}, joypad::{JoypadButton, JoypadEvent}, frame::{PixelFormat, SetPixel}};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 pub struct PixelFormatRGBA8888;
@@ -47,19 +47,21 @@ pub fn main() -> Result<(), JsValue> {
   Ok(())
 }
 
-struct WasmHostSystem {
+struct WasmHostPlatform {
   browser: BrowserNes,
   keyboard: KeyboardState,
   time: wasm_timer::Instant
 }
 
-impl HostSystem for WasmHostSystem {
+impl HostPlatform for WasmHostPlatform {
   fn alloc_render_frame(&self) -> nes::frame::RenderFrame {
-    nes::frame::RenderFrame::new::<DisplayRegionNTSC, PixelFormatRGBA8888>()
+    nes::frame::RenderFrame::new::<PixelFormatRGBA8888>()
   }
 
   fn render(&mut self, frame: &nes::frame::RenderFrame) {
-    self.browser.on_frame_ready(frame.pixels().as_ptr(), frame.pixels().len());
+    let pixels: Vec<u8> = frame.pixels_ntsc().collect();
+    // assert_eq!(pixels.len(), 224 * 240 * 4);
+    self.browser.on_frame_ready(pixels.as_ptr(), pixels.len());
   }
 
   fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) -> Shutdown {
@@ -99,7 +101,7 @@ impl HostSystem for WasmHostSystem {
   }
 }
 
-impl WasmHostSystem {
+impl WasmHostPlatform {
   pub fn new(browser: BrowserNes) -> Self {
     Self { browser, keyboard: KeyboardState::default(), time: wasm_timer::Instant::now() }
   }
@@ -121,7 +123,7 @@ impl NesWasm {
     };
 
     log(format!("nes init! {}", cart).as_str());
-    let nes = Nes::insert(cart, WasmHostSystem::new(browser));
+    let nes = Nes::insert(cart, WasmHostPlatform::new(browser));
     Self { nes }
   }
 

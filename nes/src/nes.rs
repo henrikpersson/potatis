@@ -1,7 +1,8 @@
 use core::{cell::RefCell, time::Duration};
 use alloc::{rc::Rc, boxed::Box, string::ToString};
+#[allow(unused_imports)]
 use mos6502::{mos6502::Mos6502, memory::Bus, cpu::{Cpu, Reg}, debugger::Debugger};
-use crate::{cartridge::{Cartridge, Rom}, nesbus::NesBus, ppu::ppu::{Ppu, TickEvent}, joypad::Joypad, frame::{RenderFrame, PixelFormatRGB888, DisplayRegionNTSC, PixelFormatRGB565, DisplayRegionPAL}, trace, fonts};
+use crate::{cartridge::{Cartridge, Rom}, nesbus::NesBus, ppu::ppu::{Ppu, TickEvent}, joypad::Joypad, frame::{RenderFrame, PixelFormatRGB888, PixelFormatRGB565}, trace, fonts};
 
 const DEFAULT_FPS_MAX: usize = 60;
 
@@ -15,48 +16,34 @@ impl From<bool> for Shutdown {
 }
 
 #[derive(PartialEq, Default)]
-pub enum HostDisplayRegion { #[default] Ntsc, Pal }
-
-#[derive(PartialEq, Default)]
 pub enum HostPixelFormat { #[default] Rgb888, Rgb565 }
 
-pub trait HostSystem {
+pub trait HostPlatform {
   fn render(&mut self, frame: &RenderFrame);
   fn poll_events(&mut self, joypad: &mut Joypad) -> Shutdown;
 
   fn elapsed_millis(&self) -> usize {
     // Not required. Up to platform to implement for FPS control.
-    return 0;
+    0
   }
 
   fn delay(&self, _: Duration) {
     // Not required. Up to platform to implement for FPS control.
   }
 
-  fn display_region(&self) -> HostDisplayRegion { HostDisplayRegion::default() }
   fn pixel_format(&self) -> HostPixelFormat { HostPixelFormat::default() }
 
   fn alloc_render_frame(&self) -> RenderFrame {
-    match (self.display_region(), self.pixel_format()) {
-      (HostDisplayRegion::Ntsc, HostPixelFormat::Rgb888) => {
-        RenderFrame::new::<DisplayRegionNTSC, PixelFormatRGB888>()
-      }
-      (HostDisplayRegion::Ntsc, HostPixelFormat::Rgb565) => {
-        RenderFrame::new::<DisplayRegionNTSC, PixelFormatRGB565>()
-      }
-      (HostDisplayRegion::Pal, HostPixelFormat::Rgb888) => {
-        RenderFrame::new::<DisplayRegionPAL, PixelFormatRGB888>()
-      }
-      (HostDisplayRegion::Pal, HostPixelFormat::Rgb565) => {
-        RenderFrame::new::<DisplayRegionPAL, PixelFormatRGB565>()
-      }
+    match self.pixel_format() {
+      HostPixelFormat::Rgb888 => RenderFrame::new::<PixelFormatRGB888>(),
+      HostPixelFormat::Rgb565 => RenderFrame::new::<PixelFormatRGB565>()
     }
   }
 }
 
 #[derive(Default)]
 struct HeadlessHost;
-impl HostSystem for HeadlessHost {
+impl HostPlatform for HeadlessHost {
   fn render(&mut self, _: &RenderFrame) {}
   fn poll_events(&mut self, _: &mut Joypad) -> Shutdown { Shutdown::No }
   fn elapsed_millis(&self) -> usize { 0 }
@@ -66,7 +53,7 @@ impl HostSystem for HeadlessHost {
 pub struct Nes {
   machine: Mos6502,
   ppu: Rc<RefCell<Ppu>>,
-  host: Box<dyn HostSystem>,
+  host: Box<dyn HostPlatform>,
   joypad: Rc<RefCell<Joypad>>,
   timing: FrameTiming,
   show_fps: bool,
@@ -74,11 +61,12 @@ pub struct Nes {
 }
 
 impl Nes {
-  pub fn insert<H : HostSystem + 'static, R : Rom + 'static>(cartridge: Cartridge<R>, host: H) -> Self {
+  pub fn insert<H : HostPlatform + 'static, R : Rom + 'static>(cartridge: Cartridge<R>, host: H) -> Self {
+    let mirroring = cartridge.mirroring();
     let rom_mapper = crate::mappers::for_cart(cartridge);
 
     let frame = host.alloc_render_frame();
-    let ppu = Rc::new(RefCell::new(Ppu::new(rom_mapper.clone(), frame)));
+    let ppu = Rc::new(RefCell::new(Ppu::new(rom_mapper.clone(), mirroring, frame)));
     let joypad = Rc::new(RefCell::new(Joypad::default()));
     let bus = NesBus::new(rom_mapper.clone(), ppu.clone(), joypad.clone());
 

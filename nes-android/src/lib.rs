@@ -80,7 +80,7 @@ impl AndroidHost {
   }
 }
 
-impl nes::nes::HostSystem for AndroidHost {
+impl nes::nes::HostPlatform for AndroidHost {
   fn elapsed_millis(&self) -> usize {
     self.time.elapsed().as_millis() as usize
   }
@@ -90,8 +90,9 @@ impl nes::nes::HostSystem for AndroidHost {
   }
 
   fn render(&mut self, frame: &nes::frame::RenderFrame) {
+    let pixels: Vec<u8> = frame.pixels_ntsc().collect();
     unsafe {
-      let jpixels: jbyteArray = self.env.byte_array_from_slice(frame.pixels()).unwrap();
+      let jpixels: jbyteArray = self.env.byte_array_from_slice(&pixels).unwrap();
       let jobj = JObject::from_raw(jpixels);
 
       // TODO: Is it possible/good for perf to cache the method lookup? call_method_unchecked.

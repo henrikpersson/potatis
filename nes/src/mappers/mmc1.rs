@@ -46,6 +46,8 @@ pub struct MMC1<R : Rom> {
   shift_register: u8,
 }
 
+impl<R : Rom> Mapper for MMC1<R> {}
+
 impl<R : Rom> MMC1<R> {
   pub fn new(cart: Cartridge<R>) -> Self {
     let mirroring = cart.mirroring();
@@ -175,12 +177,6 @@ impl<R : Rom> MMC1<R> {
     };
     let bank_start = bank * kilobytes::KB4;
     &self.cart.chr()[bank_start..bank_start + kilobytes::KB4]
-  }
-}
-
-impl<R : Rom> Mapper for MMC1<R> {
-  fn mirroring(&self) -> crate::cartridge::Mirroring {
-    self.mirroring
   }
 }
 

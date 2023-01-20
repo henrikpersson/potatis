@@ -1,9 +1,9 @@
 use std::time::Instant;
 
-use nes::{joypad::{Joypad, JoypadEvent, JoypadButton}, frame::{RenderFrame, DisplayRegion, DisplayRegionNTSC, DisplayRegionPAL}, nes::{HostSystem, Shutdown, HostDisplayRegion}};
+use nes::{joypad::{Joypad, JoypadEvent, JoypadButton}, frame::{RenderFrame}, nes::{HostPlatform, Shutdown}};
 use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode, Sdl, render::{Texture, Canvas, TextureCreator}, video::{Window, WindowContext}};
 
-pub struct SdlHostSystem<'a> {
+pub struct SdlHostPlatform<'a> {
   context: Sdl,
   canvas: Canvas<Window>,
   texture: Texture<'a>,
@@ -11,12 +11,12 @@ pub struct SdlHostSystem<'a> {
   time: Instant,
 }
 
-impl SdlHostSystem<'_> {
+impl SdlHostPlatform<'_> {
   pub fn new() -> Self {
     // TODO: Inject
     let scale = 4;
-    let w = DisplayRegionNTSC::WIDTH as u32;
-    let h = DisplayRegionNTSC::HEIGHT as u32;
+    let w = nes::frame::NTSC_WIDTH as u32;
+    let h = nes::frame::NTSC_HEIGHT as u32;
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -49,9 +49,10 @@ impl SdlHostSystem<'_> {
   }
 }
 
-impl HostSystem for SdlHostSystem<'_> {
+impl HostPlatform for SdlHostPlatform<'_> {
   fn render(&mut self, frame: &RenderFrame) {
-    self.texture.update(None, frame.pixels(), frame.pitch()).unwrap();
+    let pixels: Vec<u8> = frame.pixels_ntsc().collect();
+    self.texture.update(None, &pixels, frame.pitch_ntsc()).unwrap();
     self.canvas.copy(&self.texture, None, None).unwrap();
     self.canvas.present();
   }

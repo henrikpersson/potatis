@@ -1,7 +1,7 @@
 use core::cell::RefCell;
 use alloc::rc::Rc;
 use mos6502::memory::Bus;
-
+use alloc::boxed::Box;
 use crate::cartridge::{Cartridge, Mirroring, Rom};
 
 mod mmc1;
@@ -11,7 +11,7 @@ mod mmc3;
 mod uxrom;
 
 pub trait Mapper : Bus {
-  fn mirroring(&self) -> Mirroring;
+  fn on_runtime_mirroring(&mut self, _: Box<dyn FnMut(&Mirroring)>) {}
   fn irq(&mut self) -> bool { false }
 }
 

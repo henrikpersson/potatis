@@ -14,6 +14,8 @@ pub(crate) struct CNROM<R : Rom> {
   is_16kb: bool,
 }
 
+impl<R : Rom> Mapper for CNROM<R> {}
+
 impl<R: Rom> CNROM<R> {
   pub fn new(cart: Cartridge<R>) -> Self {
     let is_16kb = match cart.prg().len() {
@@ -27,12 +29,6 @@ impl<R: Rom> CNROM<R> {
       selected_bank: 0,
       is_16kb,
     }
-  }
-}
-
-impl<R : Rom> Mapper for CNROM<R> {
-  fn mirroring(&self) -> crate::cartridge::Mirroring {
-    self.cart.mirroring()
   }
 }
 

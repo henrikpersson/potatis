@@ -4,7 +4,7 @@ use structopt::StructOpt;
 use common::utils;
 
 mod sdl;
-use crate::sdl::SdlHostSystem;
+use crate::sdl::SdlHostPlatform;
 
 #[derive(StructOpt, Debug)]
 struct Cli {
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   let cartridge = Cartridge::blow_dust(args.path)?;
   println!("Loaded! {}", cartridge);
 
-  let mut nes = Nes::insert(cartridge, SdlHostSystem::new());
+  let mut nes = Nes::insert(cartridge, SdlHostPlatform::new());
   nes.show_fps(std::env::var("SHOW_FPS").is_ok());
 
   let debugger = nes.debugger();

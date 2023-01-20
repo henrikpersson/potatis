@@ -1,0 +1,24 @@
+[package]
+name = "profile"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nes = { path = "../nes", default-features = false }
+#linked_list_allocator = { version = "0.10.4", optional = true }
+dhat = { version = "0.3.2", optional = true }
+
+[features]
+profile_heap = ["dhat"]
+profile_cpu_no_std = ["profile_heap"]
+profile_cpu_std = ["nes/default"]
+default = []
+
+[profile.release]
+debug = 1
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

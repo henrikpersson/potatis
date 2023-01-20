@@ -90,7 +90,7 @@ impl Bus for NesBus {
           _ => unreachable!()
         }  
       }
-      MappedDevice::CpuTest => (), // TODO
+      MappedDevice::CpuTest => (),
       MappedDevice::Cartridge => self.rom.borrow_mut().write8(val, address),
     }
   }
@@ -98,16 +98,12 @@ impl Bus for NesBus {
 
 #[cfg(test)]
 mod tests {
-  use crate::frame::{RenderFrame, DisplayRegionNTSC, PixelFormatRGB888};
+  use crate::{frame::{RenderFrame, PixelFormatRGB888}, cartridge::Mirroring};
   use super::*;
 
   struct TestBus{}
 
-  impl Mapper for TestBus {
-    fn mirroring(&self) -> crate::cartridge::Mirroring {
-      todo!()
-    }
-}
+  impl Mapper for TestBus {}
 
   impl Bus for TestBus {
     fn read8(&self, _: u16) -> u8 {
@@ -122,10 +118,10 @@ mod tests {
   fn sut() -> NesBus {
     let bus = Rc::new(RefCell::new(TestBus{}));
     let joypad = Joypad::default();
-    let frame = RenderFrame::new::<DisplayRegionNTSC, PixelFormatRGB888>();
+    let frame = RenderFrame::new::<PixelFormatRGB888>();
     NesBus::new(
       bus.clone(), 
-      Rc::new(RefCell::new(Ppu::new(bus, frame))),
+      Rc::new(RefCell::new(Ppu::new(bus, Mirroring::Horizontal, frame))),
       Rc::new(RefCell::new(joypad))
     )
   }

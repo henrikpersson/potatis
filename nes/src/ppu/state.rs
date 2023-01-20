@@ -63,6 +63,7 @@ impl State {
     self.cycle
   }
 
+  #[allow(dead_code)]
   pub fn clock(&self) -> usize {
     self.clock
   }
