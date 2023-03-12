@@ -14,7 +14,7 @@ strings:
     Current players: {}
     
     Run this with unbuffered TTY input for the best experience:
-    $ stty -icanon && nc todo.nes.cloud 4444
+    $ stty -icanon && nc play-nes.org 4444
     
     More info: https://github.com/henrikpersson/potatis#nes-cloud
 
