@@ -1,11 +1,12 @@
-use std::{error::Error};
+use std::error::Error;
 
-use libcloud::{logging, resources::Resources};
+use libcloud::logging;
+use libcloud::resources::Resources;
 use server::Server;
 use structopt::StructOpt;
 
-mod server;
 mod runners;
+mod server;
 
 #[derive(StructOpt, Debug)]
 pub struct AppSettings {

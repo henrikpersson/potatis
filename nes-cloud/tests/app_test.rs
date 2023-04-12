@@ -1,10 +1,20 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::{process::{Child, Stdio, ChildStderr}, net::{TcpStream, SocketAddr}, io::{Read, Write, BufReader, BufRead}, time::Duration};
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Read;
+use std::io::Write;
+use std::net::SocketAddr;
+use std::net::TcpStream;
+use std::process::Child;
+use std::process::ChildStderr;
+use std::process::Stdio;
+use std::time::Duration;
 
 use assert_cmd::prelude::CommandCargoExt;
-use libcloud::{resources::{StrId, Resources}};
+use libcloud::resources::Resources;
+use libcloud::resources::StrId;
 use rand::Rng;
 
 const USER_PORT: u16 = 4444;
@@ -55,8 +65,12 @@ impl Client {
     let mut buf = vec![0; expected.len()];
     match self.0.read_exact(&mut buf) {
       Ok(()) => assert_eq_str(expected, &buf[0..expected.len()]),
-      Err(e) => panic!("assert_server_message: {}\nExpected: {:?}\n\nActual: {:?}\n", 
-        e, String::from_utf8(expected.to_vec()), String::from_utf8(buf))
+      Err(e) => panic!(
+        "assert_server_message: {}\nExpected: {:?}\n\nActual: {:?}\n",
+        e,
+        String::from_utf8(expected.to_vec()),
+        String::from_utf8(buf)
+      ),
     }
   }
 
@@ -77,14 +91,16 @@ impl Client {
     let mut buf = [0; 3];
     match self.0.read_exact(&mut buf) {
       Ok(_) => assert_eq!("\x1b[H".as_bytes(), &buf),
-      Err(e) => panic!("expect_frame: {}", e)
+      Err(e) => panic!("expect_frame: {}", e),
     }
   }
 
   fn expect_disconnected(&mut self) {
     let mut buf = [5u8; 1];
     if let Ok(n) = self.0.read(&mut buf) {
-        if n != 0 { panic!("not disconnected") }
+      if n != 0 {
+        panic!("not disconnected")
+      }
     }
   }
 
@@ -107,14 +123,19 @@ fn start_app() -> Result<SuicidalChild, Box<dyn std::error::Error>> {
   start_app_with_settings(false, 5)
 }
 
-fn start_app_with_settings(block_dup: bool, max: usize) -> Result<SuicidalChild, Box<dyn std::error::Error>> {
+fn start_app_with_settings(
+  block_dup: bool,
+  max: usize,
+) -> Result<SuicidalChild, Box<dyn std::error::Error>> {
   let mut cmd = std::process::Command::cargo_bin("nes-cloud-app")?;
   if block_dup {
     cmd.arg("--block-dup");
   }
   cmd.args([
-    "--max-concurrent", &max.to_string(),
-    "--client-read-timeout", "1500"
+    "--max-concurrent",
+    &max.to_string(),
+    "--client-read-timeout",
+    "1500",
   ]);
   cmd.stderr(Stdio::piped());
   let child = cmd.spawn()?;
@@ -122,18 +143,20 @@ fn start_app_with_settings(block_dup: bool, max: usize) -> Result<SuicidalChild,
   // Ready?
   loop {
     let stream = TcpStream::connect("127.0.0.1:4444");
-    if stream.is_ok() { break; }
+    if stream.is_ok() {
+      break;
+    }
   }
-  
+
   std::thread::sleep(Duration::from_millis(500));
 
   Ok(SuicidalChild(child))
 }
 
 #[test]
-fn single_client() -> Result<(), Box<dyn std::error::Error>>  {
+fn single_client() -> Result<(), Box<dyn std::error::Error>> {
   let _child = start_app()?;
-  
+
   let mut client = Client::connect()?;
   client.expect_welcome_and_rom_prompt();
 
@@ -141,7 +164,7 @@ fn single_client() -> Result<(), Box<dyn std::error::Error>>  {
 }
 
 #[test]
-fn same_src_addr() -> Result<(), Box<dyn std::error::Error>>  {
+fn same_src_addr() -> Result<(), Box<dyn std::error::Error>> {
   let _child = start_app_with_settings(true, 5)?;
 
   let mut client = Client::connect()?;
@@ -159,7 +182,7 @@ fn same_src_addr() -> Result<(), Box<dyn std::error::Error>>  {
 }
 
 #[test]
-fn max_clients() -> Result<(), Box<dyn std::error::Error>>  {
+fn max_clients() -> Result<(), Box<dyn std::error::Error>> {
   let max = 5;
   let _child = start_app_with_settings(false, max)?;
 
@@ -172,8 +195,7 @@ fn max_clients() -> Result<(), Box<dyn std::error::Error>>  {
     if i < max {
       c.expect_server_message(&RES.fmt(StrId::Welcome, &[&i.to_string()]));
       c.expect_server_message(&RES[StrId::RomSelection]);
-    }
-    else {
+    } else {
       c.expect_server_message(&RES[StrId::TooManyPlayers]);
     }
   }
@@ -187,12 +209,12 @@ fn max_clients() -> Result<(), Box<dyn std::error::Error>>  {
   Ok(())
 }
 
-
 #[test]
-fn select_valid_included_rom_invalid_render_mode_selection() -> Result<(), Box<dyn std::error::Error>> {
+fn select_valid_included_rom_invalid_render_mode_selection(
+) -> Result<(), Box<dyn std::error::Error>> {
   let _child = start_app()?;
   let mut client = Client::connect()?;
-  
+
   client.expect_welcome_and_rom_prompt();
   client.input(&[b'1']);
 
@@ -203,7 +225,7 @@ fn select_valid_included_rom_invalid_render_mode_selection() -> Result<(), Box<d
 
   // Invalid input
   client.input(&[b'4']); // valid: 1-3
-  // Try again
+                         // Try again
   client.expect_server_message(&RES[StrId::InvalidRenderModeSelection]);
 
   client.expect_disconnected();
@@ -212,10 +234,11 @@ fn select_valid_included_rom_invalid_render_mode_selection() -> Result<(), Box<d
 }
 
 #[test]
-fn select_valid_included_rom_valid_render_mode_selection() -> Result<(), Box<dyn std::error::Error>> {
+fn select_valid_included_rom_valid_render_mode_selection() -> Result<(), Box<dyn std::error::Error>>
+{
   let _child = start_app()?;
   let mut client = Client::connect()?;
-  
+
   client.expect_welcome_and_rom_prompt();
   client.input(&[b'1']);
 
@@ -234,10 +257,11 @@ fn select_valid_included_rom_valid_render_mode_selection() -> Result<(), Box<dyn
 }
 
 #[test]
-fn select_valid_included_rom_invalid_render_mode_selection_icanon() -> Result<(), Box<dyn std::error::Error>> {
+fn select_valid_included_rom_invalid_render_mode_selection_icanon(
+) -> Result<(), Box<dyn std::error::Error>> {
   let _child = start_app()?;
   let mut client = Client::connect()?;
-  
+
   client.expect_welcome_and_rom_prompt();
   client.input(&[b'1']);
 
@@ -253,10 +277,11 @@ fn select_valid_included_rom_invalid_render_mode_selection_icanon() -> Result<()
 }
 
 #[test]
-fn select_valid_included_rom_valid_render_mode_selection_icanon() -> Result<(), Box<dyn std::error::Error>> {
+fn select_valid_included_rom_valid_render_mode_selection_icanon(
+) -> Result<(), Box<dyn std::error::Error>> {
   let _child = start_app()?;
   let mut client = Client::connect()?;
-  
+
   client.expect_welcome_and_rom_prompt();
   client.input(&[b'1']);
 
@@ -289,17 +314,21 @@ fn select_invalid_included_rom() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn pipe_valid_rom() -> Result<(), Box<dyn std::error::Error>> {
-  let rom = include_bytes!("../../test-roms/nes-test-roms/cpu_dummy_writes/cpu_dummy_writes_ppumem.nes");
+  let rom =
+    include_bytes!("../../test-roms/nes-test-roms/cpu_dummy_writes/cpu_dummy_writes_ppumem.nes");
 
   let _child = start_app()?;
   let mut client = Client::connect()?;
 
   client.input(rom);
-  
+
   client.expect_welcome_and_rom_prompt();
   client.expect_server_message(&RES.fmt(
-    StrId::RomInserted, 
-    &["[Ines] Mapper: Nrom, Mirroring: Vertical, CHR: 1x8K, PRG: 2x16K", "319a1ece57229c48663fec8bdf3764c0"]
+    StrId::RomInserted,
+    &[
+      "[Ines] Mapper: Nrom, Mirroring: Vertical, CHR: 1x8K, PRG: 2x16K",
+      "319a1ece57229c48663fec8bdf3764c0",
+    ],
   ));
 
   client.expect_render_mode_prompt();
@@ -314,7 +343,8 @@ fn pipe_valid_rom() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn pipe_valid_rom_same_frame_same_crc_detect_disconnect() -> Result<(), Box<dyn std::error::Error>> {
+fn pipe_valid_rom_same_frame_same_crc_detect_disconnect() -> Result<(), Box<dyn std::error::Error>>
+{
   // nestest has the same frame forever without any input
   let rom = include_bytes!("../../test-roms/nestest/nestest.nes");
 
@@ -322,13 +352,16 @@ fn pipe_valid_rom_same_frame_same_crc_detect_disconnect() -> Result<(), Box<dyn 
   let mut client = Client::connect()?;
 
   client.input(rom);
-  
+
   client.expect_welcome_and_rom_prompt();
   client.expect_server_message(&RES.fmt(
-    StrId::RomInserted, 
-    &["[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K", "4068f00f3db2fe783e437681fa6b419a"]
+    StrId::RomInserted,
+    &[
+      "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K",
+      "4068f00f3db2fe783e437681fa6b419a",
+    ],
   ));
-  
+
   client.expect_render_mode_prompt();
   client.input(&[b'3']);
 
@@ -340,7 +373,8 @@ fn pipe_valid_rom_same_frame_same_crc_detect_disconnect() -> Result<(), Box<dyn 
   client.disconnect();
 
   let stderr = child.premeditated_suicide();
-  stderr.lines()
+  stderr
+    .lines()
     .map(|l| l.unwrap())
     .find(|l| l.contains("Instance died."))
     .expect("Emulation process did not die. Probably stuck in a same CRC loop.");
@@ -356,12 +390,9 @@ fn pipe_invalid_rom() -> Result<(), Box<dyn std::error::Error>> {
   let mut client = Client::connect()?;
 
   client.input(rom);
-  
+
   client.expect_welcome_and_rom_prompt();
-  client.expect_server_message(&RES.fmt(
-    StrId::InvalidRom, 
-    &["InvalidCartridge(\"magic\")"]
-  ));
+  client.expect_server_message(&RES.fmt(StrId::InvalidRom, &["InvalidCartridge(\"magic\")"]));
   client.expect_disconnected();
 
   Ok(())
@@ -375,12 +406,9 @@ fn pipe_unsupported_rom() -> Result<(), Box<dyn std::error::Error>> {
   let mut client = Client::connect()?;
 
   client.input(rom);
-  
+
   client.expect_welcome_and_rom_prompt();
-  client.expect_server_message(&RES.fmt(
-    StrId::InvalidRom, 
-    &["NotYetImplemented(\"Mapper 7\")"]
-  ));
+  client.expect_server_message(&RES.fmt(StrId::InvalidRom, &["NotYetImplemented(\"Mapper 7\")"]));
   client.expect_disconnected();
 
   Ok(())
@@ -394,7 +422,7 @@ fn pipe_magic_then_timeout() -> Result<(), Box<dyn std::error::Error>> {
   let mut client = Client::connect()?;
 
   client.input(rom);
-  
+
   client.expect_welcome_and_rom_prompt();
   client.expect_disconnected();
 
@@ -433,7 +461,7 @@ fn render_mode_color() -> Result<(), Box<dyn std::error::Error>> {
 fn render_mode_sixel() -> Result<(), Box<dyn std::error::Error>> {
   let _child = start_app()?;
   let mut client = Client::connect_port(SIXEL_PORT)?;
-  
+
   client.expect_welcome_and_rom_prompt();
   client.input(&[b'1']);
   client.expect_press_any_key_to_boot("Sixel");
@@ -445,7 +473,8 @@ fn render_mode_sixel() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn instance_panic_notify_client_and_close() -> Result<(), Box<dyn std::error::Error>> {
-  let rom = include_bytes!("../../test-roms/nes-test-roms/cpu_dummy_writes/cpu_dummy_writes_ppumem.nes");
+  let rom =
+    include_bytes!("../../test-roms/nes-test-roms/cpu_dummy_writes/cpu_dummy_writes_ppumem.nes");
 
   std::env::set_var("PANIC", "1");
 
@@ -453,11 +482,14 @@ fn instance_panic_notify_client_and_close() -> Result<(), Box<dyn std::error::Er
   let mut client = Client::connect()?;
 
   client.input(rom);
-  
+
   client.expect_welcome_and_rom_prompt();
   client.expect_server_message(&RES.fmt(
-    StrId::RomInserted, 
-    &["[Ines] Mapper: Nrom, Mirroring: Vertical, CHR: 1x8K, PRG: 2x16K", "319a1ece57229c48663fec8bdf3764c0"]
+    StrId::RomInserted,
+    &[
+      "[Ines] Mapper: Nrom, Mirroring: Vertical, CHR: 1x8K, PRG: 2x16K",
+      "319a1ece57229c48663fec8bdf3764c0",
+    ],
   ));
 
   client.expect_render_mode_prompt();
@@ -474,9 +506,13 @@ fn instance_panic_notify_client_and_close() -> Result<(), Box<dyn std::error::Er
 
   // Kill app process so we can read stderr until EOF
   let stderr = child.premeditated_suicide();
-  
-  let exp = format!("Client disconnected: ClientId({}) (0 connected)", client.0.local_addr().unwrap());
-  stderr.lines()
+
+  let exp = format!(
+    "Client disconnected: ClientId({}) (0 connected)",
+    client.0.local_addr().unwrap()
+  );
+  stderr
+    .lines()
     .map(|l| l.unwrap())
     .find(|l| l.contains(&exp))
     .expect("Instance did not die on panic");

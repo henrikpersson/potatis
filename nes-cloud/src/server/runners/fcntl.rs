@@ -1,4 +1,5 @@
-use std::{net::TcpStream, os::fd::AsRawFd};
+use std::net::TcpStream;
+use std::os::fd::AsRawFd;
 
 const F_GETFD: i32 = 1;
 const F_SETFD: i32 = 2;

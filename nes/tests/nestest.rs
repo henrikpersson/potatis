@@ -1,5 +1,10 @@
-use mos6502::cpu::{Flag, Reg};
-use std::{fmt::Write, fs::File, io::{BufReader, BufRead}};
+use std::fmt::Write;
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+
+use mos6502::cpu::Flag;
+use mos6502::cpu::Reg;
 
 mod common;
 
@@ -21,7 +26,8 @@ const ENABLE_TEST_CYCLES: bool = false;
 fn nestest() {
   let mut nes = common::setup("../test-roms/nestest/nestest.nes".into(), false);
 
-  let logf = File::open("../test-roms/nestest/nestest_cycles.log").expect("failed to read test log");
+  let logf =
+    File::open("../test-roms/nestest/nestest_cycles.log").expect("failed to read test log");
   let log: Vec<String> = BufReader::new(logf).lines().map(|s| s.unwrap()).collect();
 
   // nes.machine().debugger().enable();
@@ -35,10 +41,18 @@ fn nestest() {
   nes.cpu_mut()[Flag::I] = 1;
   nes.cpu_mut()[Reg::SP] = 0xfd;
 
-  nes.debugger().watch_memory_range(NESTEST_RES_BYTE2..=NESTEST_RES_BYTE3, |result| {
-    assert_eq!(result[0], 0x00, "nestest reports error code on byte 2.. check README");
-    assert_eq!(result[1], 0x00, "nestest reports error code on byte 3.. check README");
-  });
+  nes
+    .debugger()
+    .watch_memory_range(NESTEST_RES_BYTE2..=NESTEST_RES_BYTE3, |result| {
+      assert_eq!(
+        result[0], 0x00,
+        "nestest reports error code on byte 2.. check README"
+      );
+      assert_eq!(
+        result[1], 0x00,
+        "nestest reports error code on byte 3.. check README"
+      );
+    });
 
   let mut i = 0;
   loop {
@@ -48,9 +62,12 @@ fn nestest() {
     nes.tick();
     if log[i] != sts && ENABLE_TEST_CYCLES {
       nes.debugger().dump_backtrace();
-      panic!("nestest cycle test mismatch!\n\nExpected:\t{}\nActual:\t\t{}\n", log[i], sts);
+      panic!(
+        "nestest cycle test mismatch!\n\nExpected:\t{}\nActual:\t\t{}\n",
+        log[i], sts
+      );
     }
-    
+
     i += 1;
 
     if nes.cpu().pc() == NESTEST_SUCCESS {

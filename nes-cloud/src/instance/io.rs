@@ -1,6 +1,10 @@
-use std::{io::{Write, Read, Cursor}, net::TcpStream, time::Duration};
+use std::io::Cursor;
+use std::io::Read;
+use std::io::Write;
+use std::net::TcpStream;
+use std::time::Duration;
 
-pub enum CloudStream { 
+pub enum CloudStream {
   Offline,
   Online(TcpStream),
 }

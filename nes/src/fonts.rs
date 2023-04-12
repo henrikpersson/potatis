@@ -1,10 +1,11 @@
 use phf::phf_map;
+
 use crate::frame::RenderFrame;
 
 const W: usize = 5;
 
 static FONTS: phf::Map<char, &'static str> = phf_map! {
-  '0' => r#"
+ '0' => r#"
     ....
     .  .
     .  .
@@ -13,7 +14,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
     .  .
     ...."#,
 
-  '1' => r#"
+ '1' => r#"
      ..
       .
       .
@@ -22,7 +23,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
       .
       ."#,
 
-  '2' => r#"
+ '2' => r#"
     ...
       .
       .
@@ -31,7 +32,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
     .   
     ...."#,
 
-  '3' => r#"
+ '3' => r#"
     ...
       .
       .
@@ -40,7 +41,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
       .
     ..."#,
 
-  '4' => r#"
+ '4' => r#"
     .  .
     .  .
     .  .
@@ -49,7 +50,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
        .
        ."#,
 
-  '5' => r#"
+ '5' => r#"
     ....
     .  
     .  
@@ -58,7 +59,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
        .
     ...."#,
 
-  '6' => r#"
+ '6' => r#"
     ....
     .  
     .  
@@ -67,7 +68,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
     .  .
     ...."#,
 
-  '7' => r#"
+ '7' => r#"
     ....
        .
        .
@@ -76,7 +77,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
      .
      .  "#,
 
-  '8' => r#"
+ '8' => r#"
     ....
     .  .
     .  .
@@ -85,7 +86,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
     .  .
     ...."#,
 
-  '9' => r#"
+ '9' => r#"
     ....
     .  .
     .  .
@@ -93,7 +94,7 @@ static FONTS: phf::Map<char, &'static str> = phf_map! {
        .
        .
        ."#
- };
+};
 
 pub fn draw(s: &str, pos: (usize, usize), frame: &mut RenderFrame) {
   let fonts = s.chars().map(|c| FONTS.get(&c).expect("font missing"));
@@ -103,19 +104,17 @@ pub fn draw(s: &str, pos: (usize, usize), frame: &mut RenderFrame) {
     let mut x = char_base_x;
     let mut y = pos.1;
 
-    font.chars().for_each(|c| {
-      match c {
-        '\n' => { 
-          y += 1;
-          x = char_base_x;
-        },
-        '.' => {
-          frame.set_pixel_xy(x, y, (0xff, 0, 0));
-          x += 1;
-        }
-        ' ' => x += 1,
-        _ => ()
+    font.chars().for_each(|c| match c {
+      '\n' => {
+        y += 1;
+        x = char_base_x;
       }
+      '.' => {
+        frame.set_pixel_xy(x, y, (0xff, 0, 0));
+        x += 1;
+      }
+      ' ' => x += 1,
+      _ => (),
     });
   }
 }

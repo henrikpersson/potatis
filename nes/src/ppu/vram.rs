@@ -1,8 +1,11 @@
-use core::cell::{RefCell};
-use alloc::rc::Rc;
-use common::kilobytes;
 use alloc::boxed::Box;
-use crate::{cartridge::Mirroring, mappers::Mapper};
+use alloc::rc::Rc;
+use core::cell::RefCell;
+
+use common::kilobytes;
+
+use crate::cartridge::Mirroring;
+use crate::mappers::Mapper;
 
 pub(crate) struct Vram {
   nametables: [[u8; kilobytes::KB1]; 2], // AKA CIRAM
@@ -15,13 +18,15 @@ impl Vram {
     let mirror_map = Rc::new(RefCell::new(mirror_map));
 
     let m = mirror_map.clone();
-    mapper.borrow_mut().on_runtime_mirroring(Box::new( move |new_mirroring| {
-      *m.borrow_mut() = Self::setup_mirror_map(new_mirroring);
-    }));
+    mapper
+      .borrow_mut()
+      .on_runtime_mirroring(Box::new(move |new_mirroring| {
+        *m.borrow_mut() = Self::setup_mirror_map(new_mirroring);
+      }));
 
-    Self { 
+    Self {
       nametables: [[0; kilobytes::KB1]; 2],
-      mirror_map
+      mirror_map,
     }
   }
 
@@ -33,12 +38,16 @@ impl Vram {
       Mirroring::Horizontal => [0, 0, 1, 1],
       Mirroring::SingleScreenLower => [0, 0, 0, 0],
       Mirroring::SingleScreenUpper => [1, 1, 1, 1],
-      _ => panic!()
+      _ => panic!(),
     }
   }
 
   pub fn read(&self, address: u16) -> u8 {
-    assert!((0x2000..=0x2fff).contains(&address), "Invalid vram read: {:#06x}", address);
+    assert!(
+      (0x2000..=0x2fff).contains(&address),
+      "Invalid vram read: {:#06x}",
+      address
+    );
 
     let virtual_index = Self::get_virtual_nametable_index(address);
     let index = self.mirror_map.borrow()[virtual_index] as usize;
@@ -47,7 +56,11 @@ impl Vram {
   }
 
   pub fn write(&mut self, val: u8, address: u16) {
-    assert!((0x2000..=0x2fff).contains(&address), "Invalid vram write: {:#06x}", address);
+    assert!(
+      (0x2000..=0x2fff).contains(&address),
+      "Invalid vram write: {:#06x}",
+      address
+    );
 
     let virtual_index = Self::get_virtual_nametable_index(address);
     let index = self.mirror_map.borrow()[virtual_index] as usize;
@@ -69,7 +82,7 @@ impl Vram {
 
 #[cfg(test)]
 mod tests {
-  use crate::{ppu::vram::Vram};
+  use crate::ppu::vram::Vram;
 
   #[test]
   fn get_virtual_nametable_index() {

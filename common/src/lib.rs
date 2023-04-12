@@ -20,13 +20,12 @@ pub mod bits {
   pub fn is_signed(n: u8) -> bool {
     n & (1 << 7) != 0
   }
-  
+
   pub fn is_overflow(res: u8, lhs: u8, rhs: u8) -> bool {
     if is_signed(lhs) && is_signed(rhs) && !is_signed(res) {
       true
-    }
-    else { 
-      !is_signed(lhs) && !is_signed(rhs) && is_signed(res) 
+    } else {
+      !is_signed(lhs) && !is_signed(rhs) && is_signed(res)
     }
   }
 }

@@ -1,10 +1,15 @@
-use std::{collections::HashSet, time::Instant};
-use jni::{
-    objects::{JClass, JObject, GlobalRef},
-    sys::{jlong, jbyteArray},
-    JNIEnv,
-};
-use nes::{cartridge::Cartridge, nes::Nes, joypad::JoypadButton};
+use std::collections::HashSet;
+use std::time::Instant;
+
+use jni::objects::GlobalRef;
+use jni::objects::JClass;
+use jni::objects::JObject;
+use jni::sys::jbyteArray;
+use jni::sys::jlong;
+use jni::JNIEnv;
+use nes::cartridge::Cartridge;
+use nes::joypad::JoypadButton;
+use nes::nes::Nes;
 
 static KEYS: &[JoypadButton] = &[
   JoypadButton::B,
@@ -14,36 +19,42 @@ static KEYS: &[JoypadButton] = &[
   JoypadButton::LEFT,
   JoypadButton::RIGHT,
   JoypadButton::START,
-  JoypadButton::SELECT
+  JoypadButton::SELECT,
 ];
 
 #[no_mangle]
 pub extern "C" fn Java_nes_potatis_Rust_init(
-  env: JNIEnv<'static>, 
-  _: JClass, 
+  env: JNIEnv<'static>,
+  _: JClass,
   rom: jbyteArray,
   bindings: JObject,
-  panic_handler: JObject
+  panic_handler: JObject,
 ) -> jlong {
-
   // Panic to LogCat
   let jvm = env.get_java_vm().unwrap();
   let panic_handler = env.new_global_ref(panic_handler).unwrap();
   std::panic::set_hook(Box::new(move |info| {
     let env = jvm.get_env().unwrap();
     let s = env.new_string(info.to_string()).unwrap();
-    env.call_method(&panic_handler, "panic", "(Ljava/lang/String;)V", &[s.into()]).unwrap();
+    env
+      .call_method(
+        &panic_handler,
+        "panic",
+        "(Ljava/lang/String;)V",
+        &[s.into()],
+      )
+      .unwrap();
   }));
 
   // Create global refs to unsure JVM doesn't GC them
   let bindings = env.new_global_ref(bindings).unwrap();
   let rom = env.convert_byte_array(rom).unwrap();
   let rom = if rom.is_empty() {
-      include_bytes!("../../test-roms/nestest/nestest.nes").to_vec()
-    } else {
-      rom
-    };
-  
+    include_bytes!("../../test-roms/nestest/nestest.nes").to_vec()
+  } else {
+    rom
+  };
+
   let cart = Cartridge::blow_dust_vec(rom).unwrap();
   let host = AndroidHost::new(env, bindings);
   let nes = Nes::insert(cart, host);
@@ -76,7 +87,12 @@ struct AndroidHost {
 
 impl AndroidHost {
   fn new(env: JNIEnv<'static>, bindings: GlobalRef) -> Self {
-    Self { env, bindings, pressed: HashSet::with_capacity(8), time: Instant::now() }
+    Self {
+      env,
+      bindings,
+      pressed: HashSet::with_capacity(8),
+      time: Instant::now(),
+    }
   }
 }
 
@@ -96,14 +112,20 @@ impl nes::nes::HostPlatform for AndroidHost {
       let jobj = JObject::from_raw(jpixels);
 
       // TODO: Is it possible/good for perf to cache the method lookup? call_method_unchecked.
-      self.env.call_method(&self.bindings, "render", "([B)V", &[jobj.into()]).unwrap();
+      self
+        .env
+        .call_method(&self.bindings, "render", "([B)V", &[jobj.into()])
+        .unwrap();
     }
   }
 
   fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) -> nes::nes::Shutdown {
-    let state = self.env.call_method(&self.bindings, "input", "()B", &[]).unwrap();
+    let state = self
+      .env
+      .call_method(&self.bindings, "input", "()B", &[])
+      .unwrap();
     let state = state.b().unwrap();
-    
+
     let was_pressed = self.pressed.clone();
     self.pressed.clear();
     for (i, k) in KEYS.iter().enumerate() {
@@ -116,10 +138,11 @@ impl nes::nes::HostPlatform for AndroidHost {
       joypad.on_event(nes::joypad::JoypadEvent::Press(*btn));
     });
 
-    was_pressed.symmetric_difference(&self.pressed).for_each(|btn| {
-      joypad.on_event(nes::joypad::JoypadEvent::Release(*btn));
-    });
-    
+    was_pressed
+      .symmetric_difference(&self.pressed)
+      .for_each(|btn| {
+        joypad.on_event(nes::joypad::JoypadEvent::Release(*btn));
+      });
 
     nes::nes::Shutdown::No
   }

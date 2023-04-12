@@ -1,9 +1,10 @@
-use rp2040_hal as hal;
-
 use fugit::RateExtU32;
-use hal::{pac as pac, Watchdog, clocks::ClocksManager};
 use hal::clocks::ClockSource;
+use hal::clocks::ClocksManager;
+use hal::pac;
 use hal::Clock;
+use hal::Watchdog;
+use rp2040_hal as hal;
 
 pub const XOSC_CRYSTAL_FREQ: u32 = 12_000_000;
 
@@ -36,10 +37,7 @@ pub fn configure_overclock(
   resets: &mut pac::RESETS,
   watchdog: &mut Watchdog,
 ) -> ClocksManager {
-  let xosc = hal::xosc::setup_xosc_blocking(
-    xosc_dev, 
-    XOSC_CRYSTAL_FREQ.Hz()
-  ).unwrap();
+  let xosc = hal::xosc::setup_xosc_blocking(xosc_dev, XOSC_CRYSTAL_FREQ.Hz()).unwrap();
 
   watchdog.enable_tick_generation((XOSC_CRYSTAL_FREQ / 1_000_000) as u8);
 

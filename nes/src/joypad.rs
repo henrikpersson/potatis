@@ -17,18 +17,18 @@ bitflags! {
 #[derive(Debug)]
 pub enum JoypadEvent {
   Press(JoypadButton),
-  Release(JoypadButton)
+  Release(JoypadButton),
 }
 
 #[derive(Default)]
 pub struct Joypad {
   state: JoypadButton,
-  out: u8
+  out: u8,
 }
 
 /*
-bit 	  7   6   5     	4     	3   2     1     0    
-button 	A 	B 	Select 	Start 	Up 	Down 	Left 	Right 
+bit 	  7   6   5     	4     	3   2     1     0
+button 	A 	B 	Select 	Start 	Up 	Down 	Left 	Right
  */
 impl Joypad {
   pub fn new() -> Self {
@@ -43,7 +43,8 @@ impl Joypad {
   }
 
   pub fn strobe(&mut self, val: u8) {
-    if val & 1 == 1 { // Strobe is high
+    if val & 1 == 1 {
+      // Strobe is high
       self.out = self.state.bits;
     }
   }

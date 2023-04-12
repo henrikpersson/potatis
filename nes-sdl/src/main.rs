@@ -1,7 +1,10 @@
-use std::{path::PathBuf};
-use nes::{cartridge::Cartridge, nes::Nes, mos6502::debugger::Breakpoint};
-use structopt::StructOpt;
+use std::path::PathBuf;
+
 use common::utils;
+use nes::cartridge::Cartridge;
+use nes::mos6502::debugger::Breakpoint;
+use nes::nes::Nes;
+use structopt::StructOpt;
 
 mod sdl;
 use crate::sdl::SdlHostPlatform;
@@ -16,7 +19,7 @@ struct Cli {
   #[structopt(short, long)]
   verbose: bool,
   #[structopt(short, long)]
-  debug: bool
+  debug: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

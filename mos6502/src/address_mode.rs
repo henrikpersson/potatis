@@ -1,6 +1,8 @@
 use alloc::boxed::Box;
 
-use crate::{cpu::{Cpu, Reg}, memory::Bus};
+use crate::cpu::Cpu;
+use crate::cpu::Reg;
+use crate::memory::Bus;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AddressMode {
@@ -20,13 +22,17 @@ pub enum AddressMode {
 }
 
 impl AddressMode {
-  pub fn resolve(&self, cpu: &mut Cpu, operands: (Option<u8>, Option<u8>), num_extra_cycles: usize) -> u16 {
+  pub fn resolve(
+    &self,
+    cpu: &mut Cpu,
+    operands: (Option<u8>, Option<u8>),
+    num_extra_cycles: usize,
+  ) -> u16 {
     let mem = cpu.bus();
 
     if self.is_zeropage() {
       self.resolve_zeropage(cpu, operands.0.unwrap(), num_extra_cycles)
-    }
-    else {
+    } else {
       let low = operands.0.unwrap();
       let high = operands.1.unwrap();
       let address: u16 = ((high as u16) << 8) | low as u16;
@@ -36,7 +42,7 @@ impl AddressMode {
         AddressMode::AbsX => self.cycle_aware_add(cpu, address, cpu[Reg::X], num_extra_cycles),
         AddressMode::AbsY => self.cycle_aware_add(cpu, address, cpu[Reg::Y], num_extra_cycles),
         AddressMode::Ind => self.read16(mem, low, high),
-        _ => panic!()
+        _ => panic!(),
       }
     }
   }
@@ -53,7 +59,7 @@ impl AddressMode {
       AddressMode::Zero => operand as u16,
       AddressMode::ZeroX => operand.wrapping_add(cpu[Reg::X]) as u16, // Zeropage
       AddressMode::ZeroY => operand.wrapping_add(cpu[Reg::Y]) as u16, // zeropage
-      _ => panic!()
+      _ => panic!(),
     }
   }
 
@@ -76,12 +82,13 @@ impl AddressMode {
   }
 
   fn is_zeropage(&self) -> bool {
-    matches!(self, 
-      AddressMode::IndX  |
-      AddressMode::IndY  |
-      AddressMode::Zero  |
-      AddressMode::ZeroX |
-      AddressMode::ZeroY 
+    matches!(
+      self,
+      AddressMode::IndX
+        | AddressMode::IndY
+        | AddressMode::Zero
+        | AddressMode::ZeroX
+        | AddressMode::ZeroY
     )
   }
 }

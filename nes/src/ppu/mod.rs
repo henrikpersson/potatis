@@ -1,5 +1,5 @@
 mod palette;
-mod vram;
 mod state;
+mod vram;
 
 pub(crate) mod ppu;

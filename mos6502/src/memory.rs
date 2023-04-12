@@ -1,6 +1,6 @@
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use core::ops::RangeInclusive;
-
-use alloc::{vec::Vec, boxed::Box};
 
 const MEM_SIZE: usize = 0xffff + 1;
 

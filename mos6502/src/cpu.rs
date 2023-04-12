@@ -1,15 +1,18 @@
-use core::ops::{Index, IndexMut};
 use alloc::boxed::Box;
+use core::ops::Index;
+use core::ops::IndexMut;
+
 use crate::address_mode::AddressMode;
+use crate::instructions::Instruction;
+use crate::instructions::Opcode;
 use crate::memory::Bus;
-use crate::instructions::{Instruction, Opcode};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Reg {
   AC = 0,
   X = 1,
   Y = 2,
-  SP = 3
+  SP = 3,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -46,8 +49,8 @@ impl Cpu {
   const RESET_VECTOR: u16 = 0xfffc;
   const IRQ_VECTOR: u16 = 0xfffe;
 
-  pub fn new<T : Bus + 'static>(mem: T) -> Self {
-    Self { 
+  pub fn new<T: Bus + 'static>(mem: T) -> Self {
+    Self {
       pc: 0,
       flags: [0; 8],
       regs: [0; 4],
@@ -84,7 +87,7 @@ impl Cpu {
         if inst.mode() == AddressMode::AbsX {
           let _ = inst.resolve_operand_value(self);
         }
-      },
+      }
       Opcode::DEX => self.dec_reg(Reg::X),
       Opcode::DEY => self.dec_reg(Reg::Y),
       Opcode::INX => self.inc_reg(Reg::X),
@@ -164,7 +167,7 @@ impl Cpu {
       Opcode::JMP => {
         let target = inst.resolve_operand_address(self);
         if inst.mode() == AddressMode::Ind {
-          self.set_pc(target + 1);  
+          self.set_pc(target + 1);
         }
         self.set_pc(target);
       }
@@ -231,11 +234,11 @@ impl Cpu {
         self.cmp(Reg::AC, val);
       }
       Opcode::SRE => {
-        // LSR oper 
+        // LSR oper
         let (val, address) = inst.resolve_operand_value_and_address(self);
         let res = self.shift_right(val);
         self.mem.write8(res, address);
-        
+
         // EOR oper
         let res = self[Reg::AC] ^ res;
         self[Reg::AC] = res;
@@ -356,7 +359,7 @@ impl Cpu {
         self.flags_set_neg_zero(res);
       }
       Opcode::AND => {
-        let val = inst.resolve_operand_value( self);
+        let val = inst.resolve_operand_value(self);
         let res = self[Reg::AC] & val;
         self[Reg::AC] = res;
         self.flags_set_neg_zero(res);
@@ -413,7 +416,7 @@ impl Cpu {
 
     // No jmp; advance.
     // TODO: I was really wrong here, JMP to PC is legit (a way to wait for nmi or something?)
-    //       Added tmp check for JMP, should find a better way. 
+    //       Added tmp check for JMP, should find a better way.
     //       Probably more opcodes than JMP affected.. branch ops??
     if pc_before_exec == self.pc() && inst.opcode() != Opcode::JMP {
       self.inc_pc(inst.size());
@@ -567,8 +570,7 @@ impl Cpu {
     if signed >= 0 {
       let effective_offset = offset as u16;
       self.pc.wrapping_add(effective_offset)
-    }
-    else {
+    } else {
       let signed_offset = ((offset as u16) | 0xff00) as i16;
       let effective_offset = (-signed_offset) as u16;
       self.pc.wrapping_sub(effective_offset)
@@ -593,7 +595,7 @@ impl Cpu {
     self.add_with_carry(lhs, rhs ^ 0xff)
   }
 
-  fn push(&mut self, val: u8) {  
+  fn push(&mut self, val: u8) {
     let sp = self[Reg::SP] as usize;
     let address = (Cpu::STACK_TOP + sp) as u16;
     self.mem.write8(val, address);
@@ -611,7 +613,7 @@ impl Cpu {
     for bit in 0..=7usize {
       match bit {
         5 | 4 => (), // ignore break and 5
-        _ => self.flags[bit] = if val & (1 << bit) == 0 { 0 } else { 1 } 
+        _ => self.flags[bit] = if val & (1 << bit) == 0 { 0 } else { 1 },
       }
     }
   }
@@ -632,7 +634,7 @@ impl Cpu {
     if cond {
       self.inc_pc(2);
       let branch_target = self.calc_offset_pc(offset);
-    
+
       // if hi byte changes, we crossed a page boundary and should add extra cycles
       // "add 1 to cycles if branch occurs on same page, add 2 to cycles if branch occurs to different page"
       let crossed_page = self.pc() & 0xff00 != branch_target & 0xff00;
@@ -792,7 +794,7 @@ mod tests {
   #[test]
   fn cmp() {
     let mut cpu = sut();
-    
+
     cpu[Reg::Y] = 10;
     cpu.cmp(Reg::Y, 11);
     assert_eq!(cpu[Flag::Z], 0);

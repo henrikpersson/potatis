@@ -5,7 +5,9 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
-use nes::{cartridge::Cartridge, nes::Nes};
+
+use nes::cartridge::Cartridge;
+use nes::nes::Nes;
 
 #[cfg(feature = "profile_heap")]
 #[global_allocator]
@@ -20,9 +22,7 @@ impl nes::nes::HostPlatform for FakeHost {
     0
   }
 
-  fn delay(&self, _: core::time::Duration) {
-    
-  }
+  fn delay(&self, _: core::time::Duration) {}
 
   #[no_mangle]
   fn render(&mut self, f: &nes::frame::RenderFrame) {
@@ -51,7 +51,7 @@ fn main() {
 
   let rom = include_bytes!(env!("PROF_ROM"));
   let cart = Cartridge::blow_dust_no_heap(rom).unwrap();
-  let mut nes = Nes::insert(cart, FakeHost{});
+  let mut nes = Nes::insert(cart, FakeHost {});
 
   for _ in 0..10_000_000 {
     nes.tick();

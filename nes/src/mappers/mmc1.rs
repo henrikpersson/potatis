@@ -1,10 +1,12 @@
 use core::panic;
+
 use common::kilobytes;
 use mos6502::memory::Bus;
 
-use crate::cartridge::{Cartridge, Mirroring, Rom};
-
 use super::Mapper;
+use crate::cartridge::Cartridge;
+use crate::cartridge::Mirroring;
+use crate::cartridge::Rom;
 
 #[derive(Debug, PartialEq, Eq)]
 enum PrgBankMode {
@@ -19,7 +21,7 @@ impl From<u8> for PrgBankMode {
       0 | 1 => PrgBankMode::Switch32Kb,
       2 => PrgBankMode::FixFirstLowerSwitchUpper,
       3 => PrgBankMode::FixLastUpperSwitchLower,
-      _ => panic!()
+      _ => panic!(),
     }
   }
 }
@@ -27,12 +29,12 @@ impl From<u8> for PrgBankMode {
 #[derive(Debug, PartialEq, Eq)]
 enum ChrBankMode {
   Switch8Kb,
-  SwitchTwo4KbBanks
+  SwitchTwo4KbBanks,
 }
 
-pub struct MMC1<R : Rom> {
+pub struct MMC1<R: Rom> {
   cart: Cartridge<R>,
-  
+
   prg_rom_bank_mode: PrgBankMode,
   prg_rom_bank_num: usize,
   selected_prg_bank: u8,
@@ -46,9 +48,9 @@ pub struct MMC1<R : Rom> {
   shift_register: u8,
 }
 
-impl<R : Rom> Mapper for MMC1<R> {}
+impl<R: Rom> Mapper for MMC1<R> {}
 
-impl<R : Rom> MMC1<R> {
+impl<R: Rom> MMC1<R> {
   pub fn new(cart: Cartridge<R>) -> Self {
     let mirroring = cart.mirroring();
     MMC1 {
@@ -63,8 +65,8 @@ impl<R : Rom> MMC1<R> {
       shift_register: 0,
       num_shift_writes: 0,
       selected_prg_bank: 0,
-      mirroring
-     }
+      mirroring,
+    }
   }
 
   fn reset_shift_register(&mut self) {
@@ -79,7 +81,7 @@ impl<R : Rom> MMC1<R> {
     }
 
     let bit_to_write = val & 1;
-    
+
     // shift in bit, lsb first. max width of shift reg is 5 bits, so we only shift to bit 4.
     self.shift_register = (self.shift_register >> 1) | (bit_to_write << 4);
 
@@ -87,19 +89,23 @@ impl<R : Rom> MMC1<R> {
 
     if self.num_shift_writes == 5 {
       match address {
-        0x8000..=0x9fff => { // Control
+        0x8000..=0x9fff => {
+          // Control
           self.update_control_register(self.shift_register);
         }
-        0xa000..=0xbfff => { // CHR bank 0
+        0xa000..=0xbfff => {
+          // CHR bank 0
           self.switch_lower_chr_bank(self.shift_register)
         }
-        0xc000..=0xdfff => { // CHR bank 1
+        0xc000..=0xdfff => {
+          // CHR bank 1
           self.switch_upper_chr_bank(self.shift_register)
         }
-        0xe000..=0xffff => { // PRG bank
+        0xe000..=0xffff => {
+          // PRG bank
           self.selected_prg_bank = self.shift_register & 0b01111;
         }
-        _ => panic!("unknown register")
+        _ => panic!("unknown register"),
       }
 
       self.reset_shift_register()
@@ -128,13 +134,13 @@ impl<R : Rom> MMC1<R> {
       1 => Mirroring::SingleScreenUpper,
       2 => Mirroring::Vertical,
       3 => Mirroring::Horizontal,
-      _ => unreachable!()
+      _ => unreachable!(),
     };
 
     let chr_rom_bank_mode = (val & 0b10000) >> 4;
     self.chr_rom_bank_mode = match chr_rom_bank_mode {
       0 => ChrBankMode::Switch8Kb,
-      _ => ChrBankMode::SwitchTwo4KbBanks
+      _ => ChrBankMode::SwitchTwo4KbBanks,
     };
 
     let prg_rom_bank_mode = (val & 0b01100) >> 2;
@@ -180,7 +186,7 @@ impl<R : Rom> MMC1<R> {
   }
 }
 
-impl <R : Rom>Bus for MMC1<R> {
+impl<R: Rom> Bus for MMC1<R> {
   fn read8(&self, address: u16) -> u8 {
     // println!("Read: {:#06x}", address);
     match address {
@@ -193,7 +199,7 @@ impl <R : Rom>Bus for MMC1<R> {
       0x8000..=0xbfff => self.lower_prg_bank()[address as usize - 0x8000],
       0xc000..=0xffff => self.upper_prg_bank()[address as usize - 0xc000],
       // TODO: In most mappers, banks past the end of PRG or CHR ROM show up as mirrors of earlier banks.
-      _ => 0//panic!("unknown mmc1 memory range")
+      _ => 0, //panic!("unknown mmc1 memory range")
     }
   }
 
@@ -206,7 +212,7 @@ impl <R : Rom>Bus for MMC1<R> {
       // CPU
       0x6000..=0x7fff => self.cart.prg_ram_mut()[address as usize - 0x6000] = val,
       0x8000..=0xffff => self.write_to_shift_register(val, address),
-      _ => () //panic!("writing to rom: {:#06x}", address)
+      _ => (), //panic!("writing to rom: {:#06x}", address)
     }
   }
 }

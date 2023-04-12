@@ -1,7 +1,8 @@
-
-use core::{fmt::Display, ops::Range};
-use alloc::vec::Vec;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::fmt::Display;
+use core::ops::Range;
+
 use common::kilobytes;
 
 use self::error::CartridgeError;
@@ -49,7 +50,7 @@ pub struct Header {
   flags8: u8,
   flags9: u8,
   flags10: u8,
-  padding: [u8; 5]
+  padding: [u8; 5],
 }
 
 impl Header {
@@ -64,7 +65,9 @@ impl Header {
     }
 
     Ok(Header {
-      magic: magic.try_into().map_err(|_| CartridgeError::InvalidCartridge("magic 2"))?,
+      magic: magic
+        .try_into()
+        .map_err(|_| CartridgeError::InvalidCartridge("magic 2"))?,
       prg_rom_blocks: bin[4],
       chr_rom_blocks: bin[5],
       flags6: bin[6],
@@ -72,17 +75,23 @@ impl Header {
       flags8: bin[8],
       flags9: bin[9],
       flags10: bin[10],
-      padding: bin[11..16].try_into().map_err(|_| CartridgeError::InvalidCartridge("padding"))?,
+      padding: bin[11..16]
+        .try_into()
+        .map_err(|_| CartridgeError::InvalidCartridge("padding"))?,
     })
   }
 
   pub fn total_size_excluding_header(&self) -> usize {
-    (self.prg_rom_blocks as usize * PRG_ROM_BLOCK_SIZE) + (self.chr_rom_blocks as usize * CHR_ROM_BLOCK_SIZE)
+    (self.prg_rom_blocks as usize * PRG_ROM_BLOCK_SIZE)
+      + (self.chr_rom_blocks as usize * CHR_ROM_BLOCK_SIZE)
   }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum Format { Nes2, Ines }
+enum Format {
+  Nes2,
+  Ines,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum MapperType {
@@ -104,7 +113,7 @@ impl TryFrom<&Header> for MapperType {
       2 => Ok(MapperType::Uxrom),
       3 => Ok(MapperType::Cnrom),
       4 => Ok(MapperType::Mmc3),
-      _ => Err(CartridgeError::NotYetImplemented(format!("Mapper {}", id)))
+      _ => Err(CartridgeError::NotYetImplemented(format!("Mapper {}", id))),
     }
   }
 }
@@ -148,7 +157,7 @@ impl Rom for EmbeddedRom {
 }
 
 #[derive(PartialEq, Eq)]
-pub struct Cartridge<R : Rom> { 
+pub struct Cartridge<R: Rom> {
   rom: R,
   mirroring: Mirroring,
   prg: Range<usize>,
@@ -179,23 +188,27 @@ impl Cartridge<EmbeddedRom> {
   }
 }
 
-impl<R : Rom> Cartridge<R> {
+impl<R: Rom> Cartridge<R> {
   pub fn load(rom: R) -> Result<Cartridge<R>, CartridgeError> {
     let bin = rom.get();
     if bin.len() < HEADER_SIZE + PRG_ROM_BLOCK_SIZE || bin[0..4] != MAGIC {
       return Err(CartridgeError::InvalidCartridge("strange size"));
     }
-    
+
     let header = Header::parse(bin)?;
     if header.magic != MAGIC {
       return Err(CartridgeError::InvalidCartridge("magic"));
     }
 
-    let format = if (header.flags7 & 0x0c) == 0x08 { Format::Nes2 } else { Format::Ines };
+    let format = if (header.flags7 & 0x0c) == 0x08 {
+      Format::Nes2
+    } else {
+      Format::Ines
+    };
     // if format == Format::Nes2 {
-      // return Err(CartridgeError::NotYetImplemented("NES 2.0".into()));
+    // return Err(CartridgeError::NotYetImplemented("NES 2.0".into()));
     // }
-    
+
     let mapper = MapperType::try_from(&header)?;
 
     let skip_trainer = header.flags6 & 0b100 != 0;
@@ -208,19 +221,21 @@ impl<R : Rom> Cartridge<R> {
     // }
 
     if header.flags6 & 0b1000 != 0 {
-      return Err(CartridgeError::NotYetImplemented("cartidge fiddles w VRAM address space..".into()));
+      return Err(CartridgeError::NotYetImplemented(
+        "cartidge fiddles w VRAM address space..".into(),
+      ));
     }
 
     let mut mirroring = match header.flags6 & 1 {
       1 => Mirroring::Vertical,
-      _ => Mirroring::Horizontal
+      _ => Mirroring::Horizontal,
     };
 
     if header.flags6 & 0b1000 != 0 {
       mirroring = Mirroring::HardwiredFourScreen
     }
 
-    let prg_size = (header.prg_rom_blocks as usize) * PRG_ROM_BLOCK_SIZE; 
+    let prg_size = (header.prg_rom_blocks as usize) * PRG_ROM_BLOCK_SIZE;
     let prg_start = HEADER_SIZE;
     let prg_end = prg_start + prg_size;
 
@@ -234,9 +249,8 @@ impl<R : Rom> Cartridge<R> {
       chr_start..chr_end
     };
 
-    let chr_ram = uses_chr_ram
-      .then_some(Box::new([0; CHR_ROM_BLOCK_SIZE]));
-    
+    let chr_ram = uses_chr_ram.then_some(Box::new([0; CHR_ROM_BLOCK_SIZE]));
+
     Ok(Cartridge {
       prg: prg_start..prg_end,
       chr: chr_range,
@@ -245,7 +259,7 @@ impl<R : Rom> Cartridge<R> {
       mapper,
       format,
       chr_ram,
-      prg_ram: Box::new([0; kilobytes::KB8])
+      prg_ram: Box::new([0; kilobytes::KB8]),
     })
   }
 
@@ -260,7 +274,7 @@ impl<R : Rom> Cartridge<R> {
 
   pub fn chr(&self) -> &[u8] {
     // TODO: Perf, get rid of this branch
-    if let Some(chr_ram) = &self.chr_ram { 
+    if let Some(chr_ram) = &self.chr_ram {
       &chr_ram[..]
     } else {
       &self.rom.get()[self.chr.start..self.chr.end]
@@ -284,19 +298,25 @@ impl<R : Rom> Cartridge<R> {
   }
 }
 
-impl<R : Rom> Display for Cartridge<R> {
+impl<R: Rom> Display for Cartridge<R> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let chr_ram_or_rom = if self.chr_ram.is_some() { " RAM" } else { "" };
-    write!(f, 
-      "[{:?}] Mapper: {:?}, Mirroring: {:?}, CHR{}: {}x{}K, PRG: {}x{}K", 
-      self.format, self.mapper, self.mirroring, chr_ram_or_rom,
-      self.chr().len() / CHR_ROM_BLOCK_SIZE, CHR_ROM_BLOCK_SIZE / 1000,
-      self.prg().len() / PRG_ROM_BLOCK_SIZE, PRG_ROM_BLOCK_SIZE / 1000
+    write!(
+      f,
+      "[{:?}] Mapper: {:?}, Mirroring: {:?}, CHR{}: {}x{}K, PRG: {}x{}K",
+      self.format,
+      self.mapper,
+      self.mirroring,
+      chr_ram_or_rom,
+      self.chr().len() / CHR_ROM_BLOCK_SIZE,
+      CHR_ROM_BLOCK_SIZE / 1000,
+      self.prg().len() / PRG_ROM_BLOCK_SIZE,
+      PRG_ROM_BLOCK_SIZE / 1000
     )
   }
 }
 
-impl<R : Rom> core::fmt::Debug for Cartridge<R> {
+impl<R: Rom> core::fmt::Debug for Cartridge<R> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     write!(f, "{self}")
   }
@@ -305,9 +325,9 @@ impl<R : Rom> core::fmt::Debug for Cartridge<R> {
 #[cfg(test)]
 mod tests {
   use alloc::string::ToString;
-  use crate::cartridge::EmbeddedRom;
 
   use super::Cartridge;
+  use crate::cartridge::EmbeddedRom;
 
   fn assert_cart(r: &'static [u8], s: &str) {
     assert_eq!(Cartridge::load(EmbeddedRom(r)).unwrap().to_string(), s);
@@ -321,16 +341,16 @@ mod tests {
   #[test]
   fn cart_valid_nrom() {
     assert_cart(
-    include_bytes!("../../test-roms/nestest/nestest.nes"),
-    "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K"
-  ) ;
+      include_bytes!("../../test-roms/nestest/nestest.nes"),
+      "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K",
+    );
   }
 
   #[test]
   fn cart_valid_mmc1() {
     assert_cart(
       include_bytes!("../../test-roms/nes-test-roms/instr_test-v5/official_only.nes"),
-      "[Ines] Mapper: Mmc1, Mirroring: Vertical, CHR RAM: 1x8K, PRG: 16x16K"
+      "[Ines] Mapper: Mmc1, Mirroring: Vertical, CHR RAM: 1x8K, PRG: 16x16K",
     );
   }
 
@@ -338,7 +358,7 @@ mod tests {
   fn cart_valid_nrom_chr_ram() {
     assert_cart(
       include_bytes!("../../test-roms/nes-test-roms/blargg_ppu_tests_2005.09.15b/vram_access.nes"),
-      "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR RAM: 1x8K, PRG: 1x16K"
+      "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR RAM: 1x8K, PRG: 1x16K",
     );
   }
 }

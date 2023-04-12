@@ -1,13 +1,19 @@
-use std::{path::PathBuf, sync::mpsc::Sender, error::Error, os::fd::AsRawFd, process::Command};
+use std::error::Error;
+use std::os::fd::AsRawFd;
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::mpsc::Sender;
 
 use log::info;
 
-use crate::{server::{Event, Client}, runners::fcntl, AppSettings};
-
 use super::InstanceRunner;
+use crate::runners::fcntl;
+use crate::server::Client;
+use crate::server::Event;
+use crate::AppSettings;
 
 pub struct ProcessInstanceRunner {
-  child_binary_path: PathBuf
+  child_binary_path: PathBuf,
 }
 
 impl ProcessInstanceRunner {
@@ -25,8 +31,8 @@ impl ProcessInstanceRunner {
 impl InstanceRunner for ProcessInstanceRunner {
   fn run(
     &mut self,
-    client: Client, 
-    tx: Sender<Event>, 
+    client: Client,
+    tx: Sender<Event>,
     settings: &AppSettings,
     current_players: usize,
   ) -> Result<(), Box<dyn Error>> {
@@ -41,7 +47,11 @@ impl InstanceRunner for ProcessInstanceRunner {
       .env("PLAYERS", current_players.to_string())
       .spawn()?;
 
-    info!("Spawned instance for fd: {}, pid: {}", socket_fd, child.id());
+    info!(
+      "Spawned instance for fd: {}, pid: {}",
+      socket_fd,
+      child.id()
+    );
 
     std::thread::spawn(move || {
       let code = child.wait();

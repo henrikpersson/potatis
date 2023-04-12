@@ -1,5 +1,13 @@
-use nes::{cartridge::Cartridge, nes::{Nes, HostPlatform, Shutdown}, joypad::{JoypadButton, JoypadEvent}, frame::{PixelFormat, SetPixel}};
-use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+use nes::cartridge::Cartridge;
+use nes::frame::PixelFormat;
+use nes::frame::SetPixel;
+use nes::joypad::JoypadButton;
+use nes::joypad::JoypadEvent;
+use nes::nes::HostPlatform;
+use nes::nes::Nes;
+use nes::nes::Shutdown;
+use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::JsValue;
 
 pub struct PixelFormatRGBA8888;
 
@@ -18,13 +26,18 @@ impl SetPixel for PixelFormatRGBA8888 {
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, Copy, Default)]
-pub enum KeyState { Pressed, Released, #[default] None }
+pub enum KeyState {
+  Pressed,
+  Released,
+  #[default]
+  None,
+}
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct KeyboardState([KeyState; 8]);
 
 #[wasm_bindgen]
-extern {
+extern "C" {
   pub type BrowserNes;
 
   #[wasm_bindgen(js_namespace = console)]
@@ -50,7 +63,7 @@ pub fn main() -> Result<(), JsValue> {
 struct WasmHostPlatform {
   browser: BrowserNes,
   keyboard: KeyboardState,
-  time: wasm_timer::Instant
+  time: wasm_timer::Instant,
 }
 
 impl HostPlatform for WasmHostPlatform {
@@ -65,7 +78,9 @@ impl HostPlatform for WasmHostPlatform {
   }
 
   fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) -> Shutdown {
-    self.browser.poll_keyboard(self.keyboard.0.as_mut_ptr() as *mut u8);
+    self
+      .browser
+      .poll_keyboard(self.keyboard.0.as_mut_ptr() as *mut u8);
 
     for (i, k) in self.keyboard.0.iter().enumerate() {
       let button = match i {
@@ -77,7 +92,7 @@ impl HostPlatform for WasmHostPlatform {
         5 => JoypadButton::SELECT,
         6 => JoypadButton::B,
         7 => JoypadButton::A,
-        _ => continue
+        _ => continue,
       };
 
       let joypad_event = match k {
@@ -103,7 +118,11 @@ impl HostPlatform for WasmHostPlatform {
 
 impl WasmHostPlatform {
   pub fn new(browser: BrowserNes) -> Self {
-    Self { browser, keyboard: KeyboardState::default(), time: wasm_timer::Instant::now() }
+    Self {
+      browser,
+      keyboard: KeyboardState::default(),
+      time: wasm_timer::Instant::now(),
+    }
   }
 }
 
@@ -119,7 +138,8 @@ impl NesWasm {
       cart
     } else {
       log("ERROR Failed to load. Invalid ROM. Loading nestest instead.");
-      Cartridge::blow_dust_vec(include_bytes!("../../test-roms/nestest/nestest.nes").to_vec()).unwrap()
+      Cartridge::blow_dust_vec(include_bytes!("../../test-roms/nestest/nestest.nes").to_vec())
+        .unwrap()
     };
 
     log(format!("nes init! {}", cart).as_str());

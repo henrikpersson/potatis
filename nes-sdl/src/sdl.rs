@@ -1,7 +1,20 @@
 use std::time::Instant;
 
-use nes::{joypad::{Joypad, JoypadEvent, JoypadButton}, frame::{RenderFrame}, nes::{HostPlatform, Shutdown}};
-use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode, Sdl, render::{Texture, Canvas, TextureCreator}, video::{Window, WindowContext}};
+use nes::frame::RenderFrame;
+use nes::joypad::Joypad;
+use nes::joypad::JoypadButton;
+use nes::joypad::JoypadEvent;
+use nes::nes::HostPlatform;
+use nes::nes::Shutdown;
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::PixelFormatEnum;
+use sdl2::render::Canvas;
+use sdl2::render::Texture;
+use sdl2::render::TextureCreator;
+use sdl2::video::Window;
+use sdl2::video::WindowContext;
+use sdl2::Sdl;
 
 pub struct SdlHostPlatform<'a> {
   context: Sdl,
@@ -21,15 +34,13 @@ impl SdlHostPlatform<'_> {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("Potatis", w * scale, h * scale)
+    let window = video_subsystem
+      .window("Potatis", w * scale, h * scale)
       .position_centered()
       .build()
       .unwrap();
 
-    let canvas = window.into_canvas()
-      .present_vsync()
-      .build()
-      .unwrap();
+    let canvas = window.into_canvas().present_vsync().build().unwrap();
 
     let mut creator = canvas.texture_creator();
     let texture: Texture = unsafe {
@@ -38,7 +49,7 @@ impl SdlHostPlatform<'_> {
         .create_texture_target(PixelFormatEnum::RGB24, w, h)
         .unwrap()
     };
-    
+
     Self {
       _creator: creator,
       context: sdl_context,
@@ -52,24 +63,36 @@ impl SdlHostPlatform<'_> {
 impl HostPlatform for SdlHostPlatform<'_> {
   fn render(&mut self, frame: &RenderFrame) {
     let pixels: Vec<u8> = frame.pixels_ntsc().collect();
-    self.texture.update(None, &pixels, frame.pitch_ntsc()).unwrap();
+    self
+      .texture
+      .update(None, &pixels, frame.pitch_ntsc())
+      .unwrap();
     self.canvas.copy(&self.texture, None, None).unwrap();
     self.canvas.present();
   }
 
-  fn poll_events(&mut self, joypad: &mut Joypad, ) -> Shutdown {
+  fn poll_events(&mut self, joypad: &mut Joypad) -> Shutdown {
     for event in self.context.event_pump().unwrap().poll_iter() {
       if let Some(joypad_ev) = map_joypad(&event) {
         joypad.on_event(joypad_ev);
         continue;
       }
-      
+
       match event {
-        Event::Quit {..} |
-        Event::KeyDown { keycode: Some(Keycode::Q), .. } |
-        Event::KeyDown { keycode: Some(Keycode::Escape), .. } => return Shutdown::Yes,
-        Event::KeyDown { keycode: Some(Keycode::R), .. } => return Shutdown::Reset,
-        _ => ()
+        Event::Quit { .. }
+        | Event::KeyDown {
+          keycode: Some(Keycode::Q),
+          ..
+        }
+        | Event::KeyDown {
+          keycode: Some(Keycode::Escape),
+          ..
+        } => return Shutdown::Yes,
+        Event::KeyDown {
+          keycode: Some(Keycode::R),
+          ..
+        } => return Shutdown::Reset,
+        _ => (),
       }
     }
     Shutdown::No
@@ -87,13 +110,15 @@ impl HostPlatform for SdlHostPlatform<'_> {
 
 fn map_joypad(sdlev: &Event) -> Option<JoypadEvent> {
   match sdlev {
-    Event::KeyDown { keycode: Some(keycode), .. } => {
-      map_button(keycode).map(JoypadEvent::Press)
-    }
-    Event::KeyUp { keycode: Some(keycode), .. } => {
-      map_button(keycode).map(JoypadEvent::Release)
-    }
-    _ => None
+    Event::KeyDown {
+      keycode: Some(keycode),
+      ..
+    } => map_button(keycode).map(JoypadEvent::Press),
+    Event::KeyUp {
+      keycode: Some(keycode),
+      ..
+    } => map_button(keycode).map(JoypadEvent::Release),
+    _ => None,
   }
 }
 
@@ -107,6 +132,6 @@ fn map_button(keycode: &Keycode) -> Option<JoypadButton> {
     Keycode::L => Some(JoypadButton::A),
     Keycode::Return => Some(JoypadButton::START),
     Keycode::Space => Some(JoypadButton::SELECT),
-    _ => None
+    _ => None,
   }
 }
