@@ -1,7 +1,8 @@
-use std::{fmt::Display, str::FromStr};
+use std::fmt::Display;
+use std::str::FromStr;
 
-pub mod resources;
 pub mod logging;
+pub mod resources;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ServerMode {
@@ -26,7 +27,7 @@ impl FromStr for ServerMode {
       "Color" => Ok(Self::Color),
       "Sixel" => Ok(Self::Sixel),
       "User" => Ok(Self::User),
-      _ => Err(())
+      _ => Err(()),
     }
   }
 }
@@ -38,7 +39,10 @@ pub mod utils {
     fn read_byte(&mut self) -> Result<u8, std::io::Error>;
   }
 
-  impl<R> ReadByte for R where R : Read {
+  impl<R> ReadByte for R
+  where
+    R: Read,
+  {
     fn read_byte(&mut self) -> Result<u8, std::io::Error> {
       let mut buf = [0; 1];
       self.read_exact(&mut buf)?;

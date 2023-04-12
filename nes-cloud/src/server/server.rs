@@ -1,9 +1,21 @@
-use std::{error::Error, net::{TcpListener, TcpStream, SocketAddr}, io::Write, time::Duration};
-use libcloud::{resources::{Resources, StrId}, ServerMode};
+use std::error::Error;
+use std::io::Write;
+use std::net::SocketAddr;
+use std::net::TcpListener;
+use std::net::TcpStream;
 use std::sync::mpsc::Sender;
-use log::{info, error, warn};
+use std::time::Duration;
 
-use crate::{AppSettings, runners::{process::ProcessInstanceRunner, InstanceRunner}};
+use libcloud::resources::Resources;
+use libcloud::resources::StrId;
+use libcloud::ServerMode;
+use log::error;
+use log::info;
+use log::warn;
+
+use crate::runners::process::ProcessInstanceRunner;
+use crate::runners::InstanceRunner;
+use crate::AppSettings;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientId(SocketAddr);
@@ -20,7 +32,7 @@ pub enum Event {
   Error(String),
   Connect(Client),
   Disconnect(ClientId),
-  Blocked(Client, Vec<u8>)
+  Blocked(Client, Vec<u8>),
 }
 
 pub struct Server {
@@ -32,7 +44,7 @@ pub struct Server {
 
 impl Server {
   pub fn new(res: Resources, settings: AppSettings) -> Self {
-    Self { 
+    Self {
       res,
       connected: Vec::with_capacity(settings.max_concurrent),
       crd_timeout: Duration::from_millis(settings.client_read_timeout),
@@ -54,8 +66,8 @@ impl Server {
       info!("{:?} listening on {}", mode, host);
       let server = TcpListener::bind(host)?;
       Self::start_accepting(server, tx.clone(), mode);
-    };
-    
+    }
+
     // TODO: Inject?
     let mut runner = ProcessInstanceRunner::new(&self.settings.instance_bin);
 
@@ -64,7 +76,7 @@ impl Server {
       match ev {
         Event::Connect(client) => self.client_connected(&mut runner, client, tx.clone()),
         Event::Disconnect(client_id) => self.client_disconnected(client_id),
-        Event::Blocked(mut client, msg) => { _ = client.socket.write_all(&msg) },
+        Event::Blocked(mut client, msg) => _ = client.socket.write_all(&msg),
         Event::Error(e) => error!("Error: {}", e),
       }
     }
@@ -78,26 +90,48 @@ impl Server {
       loop {
         match srv_socket.accept() {
           Ok((socket, addr)) => {
-            let client = Client { id: ClientId(addr), socket, mode };
+            let client = Client {
+              id: ClientId(addr),
+              socket,
+              mode,
+            };
             tx.send(Event::Connect(client))
           }
           Err(e) => tx.send(Event::Error(e.to_string())),
-        }.unwrap(); // Err == main thread died.
+        }
+        .unwrap(); // Err == main thread died.
       }
     });
   }
 
   fn client_disconnected(&mut self, client_id: ClientId) {
     self.connected.retain(|c| c.0.ip() != client_id.0.ip());
-    error!("Client disconnected: {:?} ({} connected)", client_id, self.connected.len());
+    error!(
+      "Client disconnected: {:?} ({} connected)",
+      client_id,
+      self.connected.len()
+    );
   }
 
-  fn client_connected(&mut self, runner: &mut ProcessInstanceRunner, client: Client, tx: Sender<Event>) {
-    info!("Client soft-connect: {:?} ({} connected)", client.id, self.connected.len());
+  fn client_connected(
+    &mut self,
+    runner: &mut ProcessInstanceRunner,
+    client: Client,
+    tx: Sender<Event>,
+  ) {
+    info!(
+      "Client soft-connect: {:?} ({} connected)",
+      client.id,
+      self.connected.len()
+    );
 
     // Block, with events
     if let Some(msg) = self.block_client(&client.id) {
-      warn!("{:?} blocked: {}", client.id, String::from_utf8(msg.to_vec()).unwrap());
+      warn!(
+        "{:?} blocked: {}",
+        client.id,
+        String::from_utf8(msg.to_vec()).unwrap()
+      );
       tx.send(Event::Blocked(client, msg.to_vec())).unwrap();
       return;
     }
@@ -111,8 +145,7 @@ impl Server {
     if let Err(e) = runner.run(client, tx, &self.settings, self.connected.len()) {
       // TODO: Event?
       warn!("Runner failed to start: {}", e);
-    } 
-    else {
+    } else {
       info!("Client connected! {:?}", client_id);
       self.connected.push(client_id)
     }
@@ -120,11 +153,10 @@ impl Server {
 
   fn block_client(&self, client_id: &ClientId) -> Option<&[u8]> {
     if self.connected.len() >= self.settings.max_concurrent {
-      return Some(&self.res[StrId::TooManyPlayers])
+      return Some(&self.res[StrId::TooManyPlayers]);
     }
-    if self.settings.block_dup && 
-        self.connected.iter().any(|&c| c.0.ip() == client_id.0.ip()) {
-      return Some(&self.res[StrId::AlreadyConnected])
+    if self.settings.block_dup && self.connected.iter().any(|&c| c.0.ip() == client_id.0.ip()) {
+      return Some(&self.res[StrId::AlreadyConnected]);
     }
     None
   }

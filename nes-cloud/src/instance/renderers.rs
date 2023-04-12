@@ -1,12 +1,18 @@
-use std::{fs::File, io::{Read, BufWriter}};
-use nes::frame::{RenderFrame, PixelFormat, PixelFormatRGB888};
+use std::fs::File;
+use std::io::BufWriter;
+use std::io::Read;
 
-use crate::ansi::{Ansi, self};
+use nes::frame::PixelFormat;
+use nes::frame::PixelFormatRGB888;
+use nes::frame::RenderFrame;
+
+use crate::ansi::Ansi;
+use crate::ansi::{self,};
 
 const UPPER_BLOCK: &str = "\u{2580}";
 
 #[derive(Debug, Clone, Copy)]
-pub enum RenderMode { 
+pub enum RenderMode {
   Color,
   Ascii,
   Sixel,
@@ -44,16 +50,17 @@ struct SixelRenderer {
 
 impl SixelRenderer {
   pub fn new() -> Self {
-    let outfile = tempfile::Builder::new()
-      .prefix("sixel")
-      .tempfile()
-      .unwrap();
+    let outfile = tempfile::Builder::new().prefix("sixel").tempfile().unwrap();
 
     let sixel = sixel_rs::encoder::Encoder::new().unwrap();
     sixel.set_quality(sixel_rs::optflags::Quality::Low).unwrap();
     sixel.set_output(outfile.path()).unwrap();
-    sixel.set_height(sixel_rs::optflags::SizeSpecification::Percent(300)).unwrap();
-    sixel.set_width(sixel_rs::optflags::SizeSpecification::Percent(300)).unwrap();
+    sixel
+      .set_height(sixel_rs::optflags::SizeSpecification::Percent(300))
+      .unwrap();
+    sixel
+      .set_width(sixel_rs::optflags::SizeSpecification::Percent(300))
+      .unwrap();
 
     Self {
       sixel,
@@ -67,17 +74,14 @@ impl Renderer for SixelRenderer {
     self.buf.set_len(0).unwrap();
 
     // TODO: Avoid created a new file here. Reuse old tmp.
-    let infile = tempfile::Builder::new()
-      .prefix("frame")
-      .tempfile()
-      .unwrap();
+    let infile = tempfile::Builder::new().prefix("frame").tempfile().unwrap();
     let inpath = infile.path().to_owned();
 
     let w = &mut BufWriter::new(infile);
     let mut png = png::Encoder::new(
-      w, 
-      nes::frame::NTSC_WIDTH as u32, 
-      nes::frame::NTSC_HEIGHT as u32
+      w,
+      nes::frame::NTSC_WIDTH as u32,
+      nes::frame::NTSC_HEIGHT as u32,
     );
     png.set_color(png::ColorType::Rgb);
     png.set_depth(png::BitDepth::Eight);
@@ -85,7 +89,7 @@ impl Renderer for SixelRenderer {
     let pixels: Vec<u8> = frame.pixels_ntsc().collect();
     writer.write_image_data(&pixels).unwrap();
     writer.finish().unwrap();
-    
+
     self.sixel.encode_file(&inpath).unwrap();
 
     let mut buf = ansi::CURSOR_HOME_BYTES.to_vec();
@@ -95,7 +99,7 @@ impl Renderer for SixelRenderer {
 }
 
 struct UnicodeColorRenderer {
-  buf: String
+  buf: String,
 }
 
 impl UnicodeColorRenderer {
@@ -103,7 +107,9 @@ impl UnicodeColorRenderer {
   const ROWS: usize = nes::frame::NTSC_HEIGHT;
 
   fn new() -> Self {
-    UnicodeColorRenderer { buf: String::with_capacity(160000) }
+    UnicodeColorRenderer {
+      buf: String::with_capacity(160000),
+    }
   }
 }
 
@@ -135,7 +141,7 @@ impl Renderer for UnicodeColorRenderer {
 
         self.buf.push_str(UPPER_BLOCK);
       }
-      
+
       self.buf.push('\n')
     }
 
@@ -144,7 +150,7 @@ impl Renderer for UnicodeColorRenderer {
 }
 
 struct AsciiRenderer {
-  buf: String
+  buf: String,
 }
 
 impl AsciiRenderer {
@@ -152,7 +158,9 @@ impl AsciiRenderer {
   const MAX: f64 = Self::CHARSET.len() as f64;
 
   fn new() -> Self {
-    Self { buf: String::with_capacity(50000) }
+    Self {
+      buf: String::with_capacity(50000),
+    }
   }
 }
 
@@ -161,12 +169,14 @@ impl Renderer for AsciiRenderer {
     self.buf.clear();
     self.buf.push_str(crate::ansi::CURSOR_HOME);
 
-    frame.pixels_ntsc()
-      .array_chunks::<{nes::frame::PixelFormatRGB888::BYTES_PER_PIXEL}>()
+    frame
+      .pixels_ntsc()
+      .array_chunks::<{ nes::frame::PixelFormatRGB888::BYTES_PER_PIXEL }>()
       .enumerate()
       .for_each(|(n, p)| {
         // https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
-        let g: f64 = ((0.2126 * p[0] as f64) + (0.7152 * p[1] as f64) + (0.0722 * p[2] as f64)) / 255.0;
+        let g: f64 =
+          ((0.2126 * p[0] as f64) + (0.7152 * p[1] as f64) + (0.0722 * p[2] as f64)) / 255.0;
         let i = ((Self::MAX * g) + 0.5).floor();
         let c = Self::CHARSET.chars().nth(i as usize).unwrap_or('.');
         self.buf.push(c);
@@ -182,10 +192,13 @@ impl Renderer for AsciiRenderer {
 
 #[cfg(test)]
 mod tests {
-  use nes::frame::{RenderFrame, PixelFormatRGB888};
+  use nes::frame::PixelFormatRGB888;
+  use nes::frame::RenderFrame;
 
-  use crate::renderers::{UnicodeColorRenderer, SixelRenderer};
-  use super::{AsciiRenderer, Renderer};
+  use super::AsciiRenderer;
+  use super::Renderer;
+  use crate::renderers::SixelRenderer;
+  use crate::renderers::UnicodeColorRenderer;
 
   #[test]
   fn frame_sizes() {

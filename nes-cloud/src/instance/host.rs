@@ -1,8 +1,21 @@
-use std::{sync::mpsc, collections::HashMap, time::{Instant, Duration}, io::Write};
-use log::warn;
-use nes::{joypad::{JoypadButton, Joypad, JoypadEvent}, frame::RenderFrame, nes::{Shutdown, HostPlatform}};
+use std::collections::HashMap;
+use std::io::Write;
+use std::sync::mpsc;
+use std::time::Duration;
+use std::time::Instant;
 
-use crate::{io::CloudStream, renderers::{Renderer, self, RenderMode}};
+use log::warn;
+use nes::frame::RenderFrame;
+use nes::joypad::Joypad;
+use nes::joypad::JoypadButton;
+use nes::joypad::JoypadEvent;
+use nes::nes::HostPlatform;
+use nes::nes::Shutdown;
+
+use crate::io::CloudStream;
+use crate::renderers::RenderMode;
+use crate::renderers::Renderer;
+use crate::renderers::{self,};
 
 const PRESS_RELEASED_AFTER_MS: u128 = 250;
 
@@ -15,32 +28,34 @@ pub struct CloudHost {
   crc: u32,
   time: Instant,
   transmitted: usize,
-  tx_b_limit: usize
+  tx_b_limit: usize,
 }
 
 impl CloudHost {
   pub fn new(
-    stream: CloudStream, 
-    rx: mpsc::Receiver<u8>, 
+    stream: CloudStream,
+    rx: mpsc::Receiver<u8>,
     mode: RenderMode,
     tx_mb_limit: usize,
   ) -> Self {
     let renderer = renderers::create(mode);
-    Self { 
+    Self {
       stream,
-      rx, 
+      rx,
       pressed: HashMap::new(),
       dead: false,
       renderer,
       crc: 0,
       time: Instant::now(),
       transmitted: 0,
-      tx_b_limit: tx_mb_limit * 1000 * 1000
+      tx_b_limit: tx_mb_limit * 1000 * 1000,
     }
   }
 
   fn release_keys(&mut self, joypad: &mut Joypad) {
-    let to_release: Vec<JoypadButton> = self.pressed.iter()
+    let to_release: Vec<JoypadButton> = self
+      .pressed
+      .iter()
       .filter(|(_, &at)| at.elapsed().as_millis() >= PRESS_RELEASED_AFTER_MS)
       .map(|(b, _)| *b)
       .collect();
@@ -63,11 +78,11 @@ impl CloudHost {
       0x0a => Some(JoypadButton::START),
       b'a' | b'A' => Some(JoypadButton::LEFT),
       b's' | b'S' => Some(JoypadButton::DOWN),
-      b'w' | b'W'=> Some(JoypadButton::UP),
+      b'w' | b'W' => Some(JoypadButton::UP),
       b'd' | b'D' => Some(JoypadButton::RIGHT),
-      _ => None
+      _ => None,
     }
-  } 
+  }
 }
 
 impl HostPlatform for CloudHost {
@@ -90,12 +105,12 @@ impl HostPlatform for CloudHost {
     match self.rx.recv_timeout(Duration::from_millis(0)) {
       Ok(key) => {
         let button = self.map_button(key);
-        
+
         if let Some(joypad_btn) = button {
           *self.pressed.entry(joypad_btn).or_insert_with(Instant::now) = Instant::now();
           joypad.on_event(JoypadEvent::Press(joypad_btn));
         }
-      },
+      }
       Err(mpsc::RecvTimeoutError::Disconnected) => self.dead = true,
       Err(mpsc::RecvTimeoutError::Timeout) => {
         self.release_keys(joypad);

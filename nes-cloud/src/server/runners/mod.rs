@@ -1,13 +1,16 @@
-use std::{sync::mpsc::Sender};
-use crate::{server::{Event, Client}, AppSettings};
+use std::sync::mpsc::Sender;
 
+use crate::server::Client;
+use crate::server::Event;
+use crate::AppSettings;
+
+pub mod docker;
 mod fcntl;
 pub mod process;
-pub mod docker;
 
 pub trait InstanceRunner {
   fn run(
-    &mut self, 
+    &mut self,
     client: Client,
     tx: Sender<Event>,
     settings: &AppSettings,

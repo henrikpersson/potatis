@@ -6,19 +6,22 @@ extern crate alloc;
 
 pub use mos6502;
 
+mod fonts;
 mod mappers;
 mod nesbus;
 mod ppu;
-mod fonts;
 
-pub mod frame;
 pub mod cartridge;
-pub mod nes;
+pub mod frame;
 pub mod joypad;
+pub mod nes;
 
 pub mod trace {
   #[derive(Debug)]
-  pub enum Tag { PpuTiming, Cpu }
+  pub enum Tag {
+    PpuTiming,
+    Cpu,
+  }
 
   impl core::fmt::Display for Tag {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

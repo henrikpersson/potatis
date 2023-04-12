@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf, collections::HashMap, fmt::Debug};
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::fs;
+use std::path::PathBuf;
+
 use log::debug;
 use serde::Deserialize;
 
@@ -35,7 +39,7 @@ impl Resources {
   pub fn load(filepath: &str) -> Resources {
     let f = match fs::File::open(filepath) {
       Ok(f) => f,
-      Err(e) => panic!("could not open resource file ({}): {}", filepath, e)
+      Err(e) => panic!("could not open resource file ({}): {}", filepath, e),
     };
 
     let res: Resources = serde_yaml::from_reader(f).unwrap();
@@ -88,14 +92,15 @@ impl std::ops::Index<StrId> for Resources {
 
 #[cfg(test)]
 mod tests {
-  use super::{Resources, StrId};
+  use super::Resources;
+  use super::StrId;
 
   #[test]
   fn res_fmt() {
     let r = Resources::load("resources.yaml");
     assert_eq!(
-      "\nYou have inserted a ROM:\nfoo\nbar\n", 
+      "\nYou have inserted a ROM:\nfoo\nbar\n",
       String::from_utf8(r.fmt(StrId::RomInserted, &["foo", "bar"])).unwrap()
     );
-  }  
+  }
 }

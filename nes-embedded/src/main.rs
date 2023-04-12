@@ -2,27 +2,36 @@
 #![no_main]
 #![feature(alloc_error_handler)]
 
+use hal::multicore::Stack;
+use hal::pac;
+use hal::sio::SioFifo;
+use hal::Sio;
+use hal::Watchdog;
 use rp2040_hal as hal;
-use hal::{multicore::Stack, sio::SioFifo, pac, Sio, Watchdog};
 
-mod clocks;
 mod board;
+mod clocks;
+
+use core::alloc::Layout;
+use core::cell::RefCell;
 
 use board::Board;
 use critical_section::Mutex;
 use defmt::*;
 use defmt_rtt as _;
-use panic_probe as _;
 use embedded_alloc::Heap;
-use nes::{cartridge::Cartridge, nes::{Nes, HostPixelFormat}, frame::PixelFormat};
-use core::{alloc::Layout, cell::RefCell};
-use embedded_graphics::{
-  prelude::*,
-  pixelcolor::Rgb565, image::{ImageRaw, Image},
-};
+use embedded_graphics::image::Image;
+use embedded_graphics::image::ImageRaw;
+use embedded_graphics::pixelcolor::Rgb565;
+use embedded_graphics::prelude::*;
 use embedded_hal::digital::v2::OutputPin;
-use hal::multicore::Multicore;
 use hal::clocks::Clock;
+use hal::multicore::Multicore;
+use nes::cartridge::Cartridge;
+use nes::frame::PixelFormat;
+use nes::nes::HostPixelFormat;
+use nes::nes::Nes;
+use panic_probe as _;
 
 #[link_section = ".boot_loader"]
 #[used]
@@ -31,8 +40,10 @@ pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
 
-const FRAME_BUF_SIZE: usize = nes::frame::NTSC_WIDTH * nes::frame::NTSC_HEIGHT * nes::frame::PixelFormatRGB565::BYTES_PER_PIXEL;
-static FRAME_BUF: Mutex<RefCell<[u8; FRAME_BUF_SIZE]>> = Mutex::new(RefCell::new([0; FRAME_BUF_SIZE]));
+const FRAME_BUF_SIZE: usize =
+  nes::frame::NTSC_WIDTH * nes::frame::NTSC_HEIGHT * nes::frame::PixelFormatRGB565::BYTES_PER_PIXEL;
+static FRAME_BUF: Mutex<RefCell<[u8; FRAME_BUF_SIZE]>> =
+  Mutex::new(RefCell::new([0; FRAME_BUF_SIZE]));
 
 static mut CORE1_STACK: Stack<2048> = Stack::new();
 
@@ -50,7 +61,7 @@ impl EmbeddedHost {
   fn new(core1: SioFifo) -> Self {
     Self {
       start: false,
-      core1
+      core1,
     }
   }
 }
@@ -67,7 +78,7 @@ impl nes::nes::HostPlatform for EmbeddedHost {
         framebuf[i] = p;
       }
     });
-    
+
     self.core1.write(1);
   }
 
@@ -86,7 +97,7 @@ fn core1_render(sys_freq: u32) -> ! {
   let (mut board, pins) = Board::new(
     pac.IO_BANK0,
     pac.PADS_BANK0,
-sio.gpio_bank0,
+    sio.gpio_bank0,
     pac.SPI0,
     &mut pac.RESETS,
     &mut delay,
@@ -114,7 +125,7 @@ sio.gpio_bank0,
       let image = Image::new(&raw_image, Point::zero());
       image.draw(&mut board.screen).unwrap();
     });
-    
+
     frame_n += 1;
   }
 }
@@ -131,12 +142,12 @@ fn main() -> ! {
   let mut pac = pac::Peripherals::take().unwrap();
   let mut watchdog = Watchdog::new(pac.WATCHDOG);
   let clocks = clocks::configure_overclock(
-    pac.XOSC, 
-    pac.CLOCKS, 
-    pac.PLL_SYS, 
-    pac.PLL_USB, 
-    &mut pac.RESETS, 
-    &mut watchdog
+    pac.XOSC,
+    pac.CLOCKS,
+    pac.PLL_SYS,
+    pac.PLL_USB,
+    &mut pac.RESETS,
+    &mut watchdog,
   );
 
   let mut sio = Sio::new(pac.SIO);
@@ -147,16 +158,17 @@ fn main() -> ! {
 
   info!("booting core1");
   let sys_freq = clocks.system_clock.freq().to_Hz();
-  core1.spawn(unsafe { &mut CORE1_STACK.mem }, move || {
-    core1_render(sys_freq);
-  })
-  .expect("core1 failed");
-  
+  core1
+    .spawn(unsafe { &mut CORE1_STACK.mem }, move || {
+      core1_render(sys_freq);
+    })
+    .expect("core1 failed");
+
   let rom = include_bytes!(env!("ROM"));
   let cart = Cartridge::blow_dust_no_heap(rom).unwrap();
   let host = EmbeddedHost::new(sio.fifo);
   let mut nes = Nes::insert(cart, host);
-  
+
   loop {
     nes.tick();
   }

@@ -1,18 +1,43 @@
 #![feature(iter_array_chunks)]
 
-use std::{error::Error, net::TcpStream, io::{Write, Read}, os::unix::prelude::FromRawFd, ops::Sub, path::PathBuf, fmt::{Display}, time::Duration, sync::mpsc::{Sender, Receiver}, ptr::read};
-use log::{info, warn, debug, error};
-use nes::{cartridge::{Cartridge, Header, HeapRom, error::CartridgeError}, nes::Nes};
+use std::error::Error;
+use std::fmt::Display;
+use std::io::Read;
+use std::io::Write;
+use std::net::TcpStream;
+use std::ops::Sub;
+use std::os::unix::prelude::FromRawFd;
+use std::path::PathBuf;
+use std::ptr::read;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
+use std::time::Duration;
+
+use libcloud::logging;
+use libcloud::resources::Resources;
+use libcloud::resources::StrId;
+use libcloud::utils::strhash;
+use libcloud::utils::ReadByte;
+use libcloud::ServerMode;
+use libcloud::{self,};
+use log::debug;
+use log::error;
+use log::info;
+use log::warn;
+use nes::cartridge::error::CartridgeError;
+use nes::cartridge::Cartridge;
+use nes::cartridge::Header;
+use nes::cartridge::HeapRom;
+use nes::nes::Nes;
 use renderers::RenderMode;
 
-use crate::{io::CloudStream, host::CloudHost};
+use crate::host::CloudHost;
+use crate::io::CloudStream;
 
-use libcloud::{self, logging, resources::{StrId, Resources}, ServerMode, utils::{ReadByte, strhash}};
-
-mod renderers;
-mod io;
 mod ansi;
 mod host;
+mod io;
+mod renderers;
 
 const FD_STDOUT: i32 = 1;
 
@@ -20,19 +45,19 @@ const FD_STDOUT: i32 = 1;
 enum RomSelection {
   Invalid(char),
   Included(PathBuf),
-  Cart(Cartridge<HeapRom>, md5::Digest)
+  Cart(Cartridge<HeapRom>, md5::Digest),
 }
 
 #[derive(Debug)]
-struct InstanceError<S : AsRef<str>>(S);
+struct InstanceError<S: AsRef<str>>(S);
 
-impl<S : AsRef<str>> Display for InstanceError<S> {
+impl<S: AsRef<str>> Display for InstanceError<S> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.0.as_ref())
   }
 }
 
-impl<S : AsRef<str> + std::fmt::Debug> std::error::Error for InstanceError<S> {}
+impl<S: AsRef<str> + std::fmt::Debug> std::error::Error for InstanceError<S> {}
 
 fn pipe_or_select_rom(r: &mut impl Read, res: &Resources) -> Result<RomSelection, Box<dyn Error>> {
   let byte = r.read_byte()?;
@@ -44,8 +69,11 @@ fn pipe_or_select_rom(r: &mut impl Read, res: &Resources) -> Result<RomSelection
   if let Some(selection) = (byte as char).to_digit(10) {
     let roms_included = res.included_roms();
     if selection > 0 && selection <= roms_included.len() as u32 {
-      let path: PathBuf = roms_included.get(selection.sub(1) as usize).unwrap().to_path_buf();
-      return Ok(RomSelection::Included(path))
+      let path: PathBuf = roms_included
+        .get(selection.sub(1) as usize)
+        .unwrap()
+        .to_path_buf();
+      return Ok(RomSelection::Included(path));
     }
   }
 
@@ -57,7 +85,7 @@ fn read_rom(r: &mut impl Read) -> Result<RomSelection, Box<dyn Error>> {
   r.read_exact(&mut rest_of_magic)?;
 
   if rest_of_magic != nes::cartridge::MAGIC[1..] {
-    return Err(Box::new(CartridgeError::InvalidCartridge("magic")))
+    return Err(Box::new(CartridgeError::InvalidCartridge("magic")));
   }
 
   let mut header_buf = [0u8; 16];
@@ -86,7 +114,12 @@ fn select_render_mode(stream: &mut impl Read) -> Result<RenderMode, Box<dyn Erro
       b'2' => Ok(RenderMode::Color),
       b'3' => Ok(RenderMode::Ascii),
       0x0a if first => prompt(stream, false),
-      _ => return Err(Box::new(InstanceError(format!("Invalid render selection: {:#04x}", input))))
+      _ => {
+        return Err(Box::new(InstanceError(format!(
+          "Invalid render selection: {:#04x}",
+          input
+        ))))
+      }
     }
   }
 
@@ -106,9 +139,9 @@ fn recv_thread(mut stream: CloudStream, tx: Sender<u8>) {
 }
 
 fn emulation_thread(
-  stream: CloudStream, 
-  rx: Receiver<u8>, 
-  cart: Cartridge<HeapRom>, 
+  stream: CloudStream,
+  rx: Receiver<u8>,
+  cart: Cartridge<HeapRom>,
   mode: RenderMode,
   res: &Resources,
 ) {
@@ -118,7 +151,11 @@ fn emulation_thread(
     RenderMode::Sixel => res.fps_conf().sixel,
   };
 
-  info!("Starting emulation. FPS: {}, limit: {}", fps, res.tx_mb_limit());
+  info!(
+    "Starting emulation. FPS: {}, limit: {}",
+    fps,
+    res.tx_mb_limit()
+  );
 
   let host = CloudHost::new(stream, rx, mode, res.tx_mb_limit());
   let mut nes = Nes::insert(cart, host);
@@ -132,8 +169,7 @@ fn emulation_thread(
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-  logging::init(std::env::var("LOG_TO_FILE")
-    .map_or(false, |s| s.parse().unwrap_or(false)))?;
+  logging::init(std::env::var("LOG_TO_FILE").map_or(false, |s| s.parse().unwrap_or(false)))?;
 
   let oghook = std::panic::take_hook();
   std::panic::set_hook(Box::new(move |info| {
@@ -143,8 +179,8 @@ fn main() -> Result<(), Box<dyn Error>> {
   }));
 
   let fd = std::env::var("FD");
-  let srv_mode: ServerMode = std::env::var("MODE")
-    .map_or(ServerMode::User, |s| s.parse().unwrap_or(ServerMode::User));
+  let srv_mode: ServerMode =
+    std::env::var("MODE").map_or(ServerMode::User, |s| s.parse().unwrap_or(ServerMode::User));
   info!("Instance started. FD: {:?}, Mode: {:?}", fd, srv_mode);
 
   let mut res = Resources::load("resources.yaml");
@@ -152,9 +188,9 @@ fn main() -> Result<(), Box<dyn Error>> {
   let mut stream: CloudStream = match fd?.parse() {
     Ok(FD_STDOUT) => CloudStream::Offline,
     Ok(socketfd) => unsafe { CloudStream::Online(TcpStream::from_raw_fd(socketfd)) },
-    Err(e) => panic!("invalid FD: {}", e)
+    Err(e) => panic!("invalid FD: {}", e),
   };
-  
+
   // Say hello
   let players = std::env::var("PLAYERS").unwrap_or_else(|_| "0".into());
   stream.write_all(&res.fmt(StrId::Welcome, &[&players]))?;
@@ -172,23 +208,21 @@ fn main() -> Result<(), Box<dyn Error>> {
         Ok(cart) => cart,
         Err(e) => panic!("Failed to load included ROM: {}", e),
       }
-    },
+    }
     Ok(RomSelection::Cart(cart, hash)) => {
-      stream.write_all(&res.fmt(
-        StrId::RomInserted, 
-        &[&cart.to_string(), &strhash(&hash)]
-      )).unwrap();
+      stream
+        .write_all(&res.fmt(StrId::RomInserted, &[&cart.to_string(), &strhash(&hash)]))
+        .unwrap();
       cart
     }
     Ok(RomSelection::Invalid(_)) => {
       stream.write_all(&res[StrId::InvalidRomSelection]).unwrap();
       return Err(Box::new(InstanceError("Invalid ROM selection.")));
-    },
+    }
     Err(e) if e.is::<CartridgeError>() => {
-      stream.write_all(&res.fmt(
-        StrId::InvalidRom, 
-        &[&e.to_string()])
-      ).unwrap();
+      stream
+        .write_all(&res.fmt(StrId::InvalidRom, &[&e.to_string()]))
+        .unwrap();
       return Err(e);
     }
     Err(e) => {
@@ -223,8 +257,8 @@ fn main() -> Result<(), Box<dyn Error>> {
   let (tx, rx) = std::sync::mpsc::channel::<u8>();
   std::thread::scope(|scope| {
     let s = stream.clone();
-    scope.spawn(|| { recv_thread(s, tx) });
-    scope.spawn(|| { emulation_thread(stream, rx, cart, mode, &res) });
+    scope.spawn(|| recv_thread(s, tx));
+    scope.spawn(|| emulation_thread(stream, rx, cart, mode, &res));
 
     if std::env::var("PANIC").is_ok() {
       std::thread::sleep(Duration::from_millis(1000));
@@ -237,13 +271,16 @@ fn main() -> Result<(), Box<dyn Error>> {
   Ok(())
 }
 
-
 #[cfg(test)]
 mod tests {
-  use std::{io::Cursor, error::Error};
-  use libcloud::{resources::Resources, utils::strhash};
+  use std::error::Error;
+  use std::io::Cursor;
 
-  use crate::{RomSelection, pipe_or_select_rom};
+  use libcloud::resources::Resources;
+  use libcloud::utils::strhash;
+
+  use crate::pipe_or_select_rom;
+  use crate::RomSelection;
 
   impl PartialEq for RomSelection {
     fn eq(&self, other: &Self) -> bool {
@@ -284,7 +321,10 @@ mod tests {
     let mapper7 = include_bytes!("../../../test-roms/nes-test-roms/other/oam3.nes");
     let result = input(mapper7);
     assert!(result.is_err());
-    assert_eq!(result.err().unwrap().to_string(), "NotYetImplemented(\"Mapper 7\")")
+    assert_eq!(
+      result.err().unwrap().to_string(),
+      "NotYetImplemented(\"Mapper 7\")"
+    )
   }
 
   #[test]
@@ -294,16 +334,24 @@ mod tests {
         Ok(RomSelection::Cart(cart, hash)) => {
           assert_eq!(cart.to_string(), expected);
           assert_eq!(exphash, strhash(&hash));
-        },
-        Ok(_) => panic!("invalid response") ,
+        }
+        Ok(_) => panic!("invalid response"),
         Err(e) => panic!("{}", e),
       }
     }
 
     let pm = include_bytes!("../../../test-roms/nestest/nestest.nes");
-    assert_pipe_rom(pm, "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K", "4068f00f3db2fe783e437681fa6b419a");
-    
+    assert_pipe_rom(
+      pm,
+      "[Ines] Mapper: Nrom, Mirroring: Horizontal, CHR: 1x8K, PRG: 1x16K",
+      "4068f00f3db2fe783e437681fa6b419a",
+    );
+
     let pm = include_bytes!("../../../test-roms/nes-test-roms/instr_misc/instr_misc.nes");
-    assert_pipe_rom(pm, "[Ines] Mapper: Mmc1, Mirroring: Vertical, CHR RAM: 1x8K, PRG: 4x16K", "df401ddc57943c774a225e9fb9b305a0");
+    assert_pipe_rom(
+      pm,
+      "[Ines] Mapper: Mmc1, Mirroring: Vertical, CHR RAM: 1x8K, PRG: 4x16K",
+      "df401ddc57943c774a225e9fb9b305a0",
+    );
   }
 }

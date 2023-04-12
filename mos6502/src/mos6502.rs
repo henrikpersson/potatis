@@ -1,6 +1,8 @@
 use alloc::boxed::Box;
 
-use crate::{cpu::Cpu, memory::Bus, debugger::Debugger};
+use crate::cpu::Cpu;
+use crate::debugger::Debugger;
+use crate::memory::Bus;
 
 pub struct Mos6502 {
   cpu: Cpu,
@@ -13,7 +15,12 @@ pub struct Mos6502 {
 impl Mos6502 {
   pub fn new(cpu: Cpu) -> Self {
     let debugger = Debugger::default();
-    Self { cpu, debugger, total_cycles: 0, total_ticks: 0 }
+    Self {
+      cpu,
+      debugger,
+      total_cycles: 0,
+      total_ticks: 0,
+    }
   }
 
   pub fn cpu(&self) -> &Cpu {

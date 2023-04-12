@@ -1,29 +1,29 @@
 use common::kilobytes;
 use mos6502::memory::Bus;
 
-use crate::cartridge::{Cartridge, Rom};
-
 use super::Mapper;
+use crate::cartridge::Cartridge;
+use crate::cartridge::Rom;
 
-pub struct UxROM<R : Rom> {
+pub struct UxROM<R: Rom> {
   cart: Cartridge<R>,
   bank: u8,
   num_banks: usize,
 }
 
-impl<R : Rom> Mapper for UxROM<R> {}
+impl<R: Rom> Mapper for UxROM<R> {}
 
-impl<R : Rom> UxROM<R> {
+impl<R: Rom> UxROM<R> {
   pub fn new(cart: Cartridge<R>) -> Self {
-    Self { 
+    Self {
       num_banks: cart.prg().len() / kilobytes::KB16,
-      cart, 
-      bank: 0 
+      cart,
+      bank: 0,
     }
   }
 }
 
-impl<R : Rom> Bus for UxROM<R> {
+impl<R: Rom> Bus for UxROM<R> {
   fn read8(&self, address: u16) -> u8 {
     let address = address as usize;
     let selected_bank = self.bank as usize;
@@ -32,7 +32,7 @@ impl<R : Rom> Bus for UxROM<R> {
       0x0000..=0x1fff => self.cart.chr()[address],
       0x8000..=0xbfff => self.cart.prg()[(selected_bank * kilobytes::KB16) + (address - 0x8000)],
       0xc000..=0xffff => self.cart.prg()[(last_bank * kilobytes::KB16) + (address - 0xc000)],
-      _ => 0
+      _ => 0,
     }
   }
 
@@ -40,7 +40,7 @@ impl<R : Rom> Bus for UxROM<R> {
     match address {
       0x0000..=0x1fff => self.cart.chr_ram()[address as usize] = val,
       0x8000..=0xffff => self.bank = val,
-      _ => ()
+      _ => (),
     }
   }
 }

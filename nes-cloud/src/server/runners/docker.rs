@@ -1,11 +1,12 @@
-use crate::{server::Client, AppSettings};
 use super::InstanceRunner;
+use crate::server::Client;
+use crate::AppSettings;
 
 struct DockerInstanceRunner;
 
 impl InstanceRunner for DockerInstanceRunner {
   fn run(
-    &mut self, 
+    &mut self,
     _client: Client,
     _tx: std::sync::mpsc::Sender<crate::server::Event>,
     _settings: &AppSettings,

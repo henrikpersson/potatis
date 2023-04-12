@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use nes::{cartridge::Cartridge, nes::Nes};
+use nes::cartridge::Cartridge;
+use nes::nes::Nes;
 
 pub fn setup(path: PathBuf, verbose: bool) -> Nes {
   let cartridge = Cartridge::blow_dust(path).expect("failed to map rom");

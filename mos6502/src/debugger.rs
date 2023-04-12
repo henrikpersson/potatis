@@ -1,7 +1,15 @@
 use alloc::vec::Vec;
+use std::collections::VecDeque;
+use std::fmt::Write;
+use std::ops::RangeInclusive;
+
 use getch::Getch;
-use std::{fmt::Write, collections::{VecDeque}, ops::RangeInclusive};
-use crate::{cpu::{Cpu, Reg, Flag}, instructions::{Instruction, Opcode}};
+
+use crate::cpu::Cpu;
+use crate::cpu::Flag;
+use crate::cpu::Reg;
+use crate::instructions::Instruction;
+use crate::instructions::Opcode;
 
 const BACKTRACE_LIMIT: usize = 11;
 
@@ -18,29 +26,36 @@ pub struct Debugger {
 struct BacktraceEntry {
   inst: Instruction,
   pc: u16,
-  opbyte: u8
+  opbyte: u8,
 }
 
 #[derive(PartialEq, Eq)]
 pub enum Breakpoint {
   Address(u16),
   Opcode(String),
-  OpcodeSequence(Vec<&'static str>)
-  // TODO add support to break on opcode WITH operands
+  OpcodeSequence(Vec<&'static str>), // TODO add support to break on opcode WITH operands
 }
 
 enum Watch {
-  Range { address: RangeInclusive<u16>, state: Option<Vec<u8>>, f: Box<dyn Fn(Vec<u8>)> },
-  Address { address: u16, state: Option<u8>, f: Box<dyn Fn(u8)> },
+  Range {
+    address: RangeInclusive<u16>,
+    state: Option<Vec<u8>>,
+    f: Box<dyn Fn(Vec<u8>)>,
+  },
+  Address {
+    address: u16,
+    state: Option<u8>,
+    f: Box<dyn Fn(u8)>,
+  },
   // TODO: Reg, Flag, PC watches
 }
 
 impl Debugger {
   pub fn default() -> Self {
-    Self { 
-      stdin: Getch::new(), 
+    Self {
+      stdin: Getch::new(),
       breakpoints: Vec::with_capacity(2),
-      last_pc: None, 
+      last_pc: None,
       suspended: false,
       verbose: false,
       backtrace: VecDeque::with_capacity(BACKTRACE_LIMIT),
@@ -64,11 +79,15 @@ impl Debugger {
     let pc = cpu.pc();
     let opbyte = cpu.bus().read8(pc);
 
-    self.backtrace.push_back(BacktraceEntry { inst: next_inst.clone(), pc, opbyte });
+    self.backtrace.push_back(BacktraceEntry {
+      inst: next_inst.clone(),
+      pc,
+      opbyte,
+    });
     if self.backtrace.len() == BACKTRACE_LIMIT {
       self.backtrace.remove(0);
     }
-    
+
     if self.suspended || self.verbose {
       Debugger::print_instruction(pc, opbyte, &next_inst);
     }
@@ -77,8 +96,7 @@ impl Debugger {
 
     if self.suspended {
       self.user_input(cpu);
-    }
-    else if self.is_breakpoint(pc, next_inst.opcode()) {
+    } else if self.is_breakpoint(pc, next_inst.opcode()) {
       self.suspend(cpu, pc);
     }
 
@@ -90,40 +108,47 @@ impl Debugger {
       match b {
         Breakpoint::Address(addr) => {
           if *addr == pc {
-            return true
+            return true;
           }
-        },
+        }
         Breakpoint::Opcode(opstr) => {
           if *opstr == opcode.to_string() {
             return true;
           }
-        },
+        }
         Breakpoint::OpcodeSequence(seq) => {
-          let history: Vec<String> = self.backtrace.iter()
+          let history: Vec<String> = self
+            .backtrace
+            .iter()
             .rev()
             .take(seq.len())
             .map(|b| b.inst.opcode().to_string())
             .collect();
-          let upper: Vec<String> = seq.iter()
-            .rev()
-            .map(|&s| s.to_uppercase())
-            .collect();
+          let upper: Vec<String> = seq.iter().rev().map(|&s| s.to_uppercase()).collect();
           if history == upper {
             return true;
           }
-        },
+        }
       }
     }
     false
   }
 
   pub fn watch_memory_range(&mut self, range: RangeInclusive<u16>, f: impl Fn(Vec<u8>) + 'static) {
-    let watch = Watch::Range { address: range, state: None, f: Box::new(f) };
+    let watch = Watch::Range {
+      address: range,
+      state: None,
+      f: Box::new(f),
+    };
     self.watches.push(watch)
   }
 
   pub fn watch_memory(&mut self, address: u16, f: impl Fn(u8) + 'static) {
-    let watch = Watch::Address { address, state: None, f: Box::new(f) };
+    let watch = Watch::Address {
+      address,
+      state: None,
+      f: Box::new(f),
+    };
     self.watches.push(watch)
   }
 
@@ -156,7 +181,8 @@ impl Debugger {
     }
   }
 
-  pub fn enable(&mut self) { // TODO: better API
+  pub fn enable(&mut self) {
+    // TODO: better API
     self.dump_backtrace();
     self.suspended = true;
   }
@@ -179,7 +205,8 @@ impl Debugger {
     let ch = self.stdin.getch().unwrap();
     match ch {
       0x20 => (), // Space, step
-      0x0a => { // Enter
+      0x0a => {
+        // Enter
         println!("{:?}", cpu);
         println!("{}", cpu);
         self.user_input(cpu);
@@ -218,20 +245,30 @@ impl Debugger {
   fn print_instruction(pc: u16, opbyte: u8, inst: &Instruction) {
     let mut pc_str = String::new();
     write!(&mut pc_str, "{:#06x}", pc).unwrap();
-  
+
     let mut opbyte_str = String::new();
     write!(&mut opbyte_str, "{:#04x}", opbyte).unwrap();
-  
+
     let mut operands_str = String::new();
     let operands = [inst.operands().0, inst.operands().1];
     for operand in operands.iter().filter_map(|o| *o) {
       write!(&mut operands_str, "{:#04x} ", operand).unwrap();
     }
-  
+
     let mut mnemonic_str = String::new();
-    write!(&mut mnemonic_str, "{:?} {:?} {}", inst.opcode(), inst.mode(), operands_str).unwrap();
-  
-    println!("{:<10} {} {:<10} {}", pc_str, opbyte_str, operands_str, mnemonic_str);
+    write!(
+      &mut mnemonic_str,
+      "{:?} {:?} {}",
+      inst.opcode(),
+      inst.mode(),
+      operands_str
+    )
+    .unwrap();
+
+    println!(
+      "{:<10} {} {:<10} {}",
+      pc_str, opbyte_str, operands_str, mnemonic_str
+    );
   }
 }
 
@@ -242,15 +279,42 @@ impl std::fmt::Debug for Cpu {
     }
 
     write!(f, "--------\n")?;
-    write!(f, "pc:\t{:#06x}\nsp:\t{}\nacc:\t{}\nx:\t{}\ny:\t{}\n", self.pc(), hexdec(self[Reg::SP]), hexdec(self[Reg::AC]), hexdec(self[Reg::X]), hexdec(self[Reg::Y]))?;
-    write!(f, "NEG={}, OVF={}, DEC={}, INT={}, ZER={}, CAR={} ({:#010b}) ({:#04x})", self[Flag::N], self[Flag::V], self[Flag::D], self[Flag::I], self[Flag::Z], self[Flag::C], self.flags_as_byte(), self.flags_as_byte())
+    write!(
+      f,
+      "pc:\t{:#06x}\nsp:\t{}\nacc:\t{}\nx:\t{}\ny:\t{}\n",
+      self.pc(),
+      hexdec(self[Reg::SP]),
+      hexdec(self[Reg::AC]),
+      hexdec(self[Reg::X]),
+      hexdec(self[Reg::Y])
+    )?;
+    write!(
+      f,
+      "NEG={}, OVF={}, DEC={}, INT={}, ZER={}, CAR={} ({:#010b}) ({:#04x})",
+      self[Flag::N],
+      self[Flag::V],
+      self[Flag::D],
+      self[Flag::I],
+      self[Flag::Z],
+      self[Flag::C],
+      self.flags_as_byte(),
+      self.flags_as_byte()
+    )
   }
 }
 
 impl std::fmt::Display for Cpu {
   // nestest format
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}", self[Reg::AC], self[Reg::X], self[Reg::Y], self.flags_as_byte(), self[Reg::SP])
+    write!(
+      f,
+      "A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+      self[Reg::AC],
+      self[Reg::X],
+      self[Reg::Y],
+      self.flags_as_byte(),
+      self[Reg::SP]
+    )
   }
 }
 

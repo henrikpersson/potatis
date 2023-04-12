@@ -1,13 +1,17 @@
 #[derive(Default, PartialEq, Eq, Copy, Clone)]
 pub(crate) enum Phase {
   PreRender,
-  #[default] Render,
+  #[default]
+  Render,
   PostRender,
   EnteringVblank,
-  Vblank
+  Vblank,
 }
 
-pub(crate) enum Rendering { Enabled, Disabled }
+pub(crate) enum Rendering {
+  Enabled,
+  Disabled,
+}
 
 #[derive(Default)]
 pub(crate) struct State {
@@ -30,7 +34,7 @@ impl State {
       240 => Phase::PostRender,
       241 => Phase::EnteringVblank,
       242..=260 => Phase::Vblank,
-      _ => unreachable!()
+      _ => unreachable!(),
     };
 
     if self.phase == Phase::PreRender {
@@ -45,9 +49,13 @@ impl State {
     self.odd_frame = !self.odd_frame;
 
     (
-      self.phase, 
-      self.cycle, 
-      if rendering_enabled { Rendering::Enabled } else { Rendering::Disabled }
+      self.phase,
+      self.cycle,
+      if rendering_enabled {
+        Rendering::Enabled
+      } else {
+        Rendering::Disabled
+      },
     )
   }
 

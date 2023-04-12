@@ -1,10 +1,13 @@
+use alloc::boxed::Box;
 use core::panic;
+
 use common::kilobytes;
 use mos6502::memory::Bus;
-use alloc::boxed::Box;
-use crate::cartridge::{Cartridge, Mirroring, Rom};
 
 use super::Mapper;
+use crate::cartridge::Cartridge;
+use crate::cartridge::Mirroring;
+use crate::cartridge::Rom;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum PrgBankMode {
@@ -18,9 +21,9 @@ enum ChrBankMode {
   TwoKbAt1000_1 = 1,
 }
 
-pub struct MMC3<R : Rom> {
+pub struct MMC3<R: Rom> {
   cart: Cartridge<R>,
-  
+
   prg_rom_banks_total: usize,
   prg_rom_bank_mode: PrgBankMode,
 
@@ -29,14 +32,14 @@ pub struct MMC3<R : Rom> {
 
   registers: [u8; 8],
   register_to_update: u8, // 3 bits
-  
+
   irq_enabled: bool,
   irq_latch: u8,
   irq_counter: u8,
   irq_reload: bool,
 }
 
-impl<R : Rom> MMC3<R> {
+impl<R: Rom> MMC3<R> {
   pub fn new(cart: Cartridge<R>) -> Self {
     Self {
       prg_rom_banks_total: cart.prg().len() / kilobytes::KB8,
@@ -50,7 +53,7 @@ impl<R : Rom> MMC3<R> {
       irq_latch: 0,
       irq_counter: 0,
       irq_reload: false,
-     }
+    }
   }
 
   // https://www.nesdev.org/wiki/MMC3#PRG_Banks
@@ -64,7 +67,7 @@ impl<R : Rom> MMC3<R> {
       (0xc000..=0xdfff, 0) => second_last_bank,
       (0xc000..=0xdfff, 1) => self.registers[6] as usize,
       (0xe000..=0xffff, _) => self.prg_rom_banks_total - 1,
-      _ => panic!()
+      _ => panic!(),
     };
 
     // Remove top bank indexing bits - 0x1fff == 8kb - 1
@@ -76,8 +79,8 @@ impl<R : Rom> MMC3<R> {
   fn read_chr(&self, address: u16) -> u8 {
     let d7 = self.chr_rom_bank_mode as u8;
 
-    // R0 and R1 ignore the bottom bit, as the value written still 
-    // counts banks in 1KB units but odd numbered banks can't be selected. 
+    // R0 and R1 ignore the bottom bit, as the value written still
+    // counts banks in 1KB units but odd numbered banks can't be selected.
     let bank: u8 = match (address, d7) {
       (0x0000..=0x03FF, 0) => self.registers[0],
       (0x0000..=0x03FF, 1) => self.registers[2],
@@ -95,17 +98,17 @@ impl<R : Rom> MMC3<R> {
       (0x1800..=0x1BFF, 1) => self.registers[1],
       (0x1C00..=0x1FFF, 0) => self.registers[5],
       (0x1C00..=0x1FFF, 1) => self.registers[1] | 1,
-      _ => panic!()
+      _ => panic!(),
     };
 
     // Remove top bank indexing bits - 0x03ff == 1kb - 1
-    let offset = address as usize & 0x3ff; 
+    let offset = address as usize & 0x3ff;
     let base = kilobytes::KB1 * bank as usize;
     self.cart.chr()[base + offset]
   }
 }
 
-impl<R : Rom> Mapper for MMC3<R> {
+impl<R: Rom> Mapper for MMC3<R> {
   fn on_runtime_mirroring(&mut self, cb: Box<dyn FnMut(&Mirroring)>) {
     self.mirroring_cb = Some(cb);
   }
@@ -127,15 +130,14 @@ impl<R : Rom> Mapper for MMC3<R> {
   }
 }
 
-impl<R : Rom> Bus for MMC3<R> {
-  
+impl<R: Rom> Bus for MMC3<R> {
   fn read8(&self, address: u16) -> u8 {
     // println!("Read: {:#06x}", address);
     match address {
       0x0000..=0x1fff => self.read_chr(address),
       0x6000..=0x7fff => self.cart.prg_ram()[address as usize - 0x6000],
       0x8000..=0xffff => self.read_prg(address),
-      _ => 0
+      _ => 0,
     }
   }
 
@@ -150,8 +152,16 @@ impl<R : Rom> Bus for MMC3<R> {
       0x8000..=0x9fff => {
         if even {
           // Bank select
-          self.prg_rom_bank_mode = if val & 0x40 == 0 { PrgBankMode::Swap8000FixC000_0 } else { PrgBankMode::SwapC000Fix8000_1 };
-          self.chr_rom_bank_mode = if val & 0x80 == 0 { ChrBankMode::TwoKbAt0000_0 } else { ChrBankMode::TwoKbAt1000_1 };
+          self.prg_rom_bank_mode = if val & 0x40 == 0 {
+            PrgBankMode::Swap8000FixC000_0
+          } else {
+            PrgBankMode::SwapC000Fix8000_1
+          };
+          self.chr_rom_bank_mode = if val & 0x80 == 0 {
+            ChrBankMode::TwoKbAt0000_0
+          } else {
+            ChrBankMode::TwoKbAt1000_1
+          };
           self.register_to_update = val & 0b111;
         } else {
           // Bank data
@@ -160,20 +170,21 @@ impl<R : Rom> Bus for MMC3<R> {
           self.registers[self.register_to_update as usize] = match self.register_to_update {
             0 | 1 => val & 0xfe,
             6 | 7 => val & 0x3f,
-            _ => val
+            _ => val,
           };
         }
       }
       0xa000..=0xbfff => {
         if even {
-          let runtime_mirroring = if val & 1 == 1 { 
-            Mirroring::Horizontal 
-          } else { 
-            Mirroring::Vertical 
+          let runtime_mirroring = if val & 1 == 1 {
+            Mirroring::Horizontal
+          } else {
+            Mirroring::Vertical
           };
 
           if self.cart.mirroring() != runtime_mirroring {
-            let cb = self.mirroring_cb
+            let cb = self
+              .mirroring_cb
               .as_mut()
               .expect("mirroring changed, no one to tell");
             (*cb)(&runtime_mirroring)
@@ -196,7 +207,7 @@ impl<R : Rom> Bus for MMC3<R> {
         }
         self.irq_enabled = !even;
       }
-      _ => ()
+      _ => (),
     }
   }
 }

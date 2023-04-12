@@ -3,12 +3,12 @@
 extern crate alloc;
 
 mod address_mode;
-mod instructions;
 pub mod cpu;
 #[cfg(feature = "debugger")]
 pub mod debugger;
-pub mod mos6502;
+mod instructions;
 pub mod memory;
+pub mod mos6502;
 
 #[cfg(not(feature = "debugger"))]
 pub mod debugger {

@@ -1,22 +1,29 @@
-
-use core::cell::RefCell;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
-use crate::{frame::RenderFrame, trace, ppu::state::{Phase, Rendering}, mappers::Mapper, cartridge::Mirroring};
-use super::{palette::Palette, vram::Vram, state::State};
+use core::cell::RefCell;
+
+use super::palette::Palette;
+use super::state::State;
+use super::vram::Vram;
+use crate::cartridge::Mirroring;
+use crate::frame::RenderFrame;
+use crate::mappers::Mapper;
+use crate::ppu::state::Phase;
+use crate::ppu::state::Rendering;
+use crate::trace;
 
 #[derive(Default, Clone, Copy, Debug)]
 struct Sprite {
   pixels: [u8; 8], // Only 8 pixels per line
-  priority: bool, // Priority (0: in front of background; 1: behind background)
+  priority: bool,  // Priority (0: in front of background; 1: behind background)
   x: u8,
-  zero: bool
+  zero: bool,
 }
 
 #[derive(Debug)]
 #[repr(u16)]
 #[allow(dead_code)]
-enum Register { 
+enum Register {
   Ctrl2000 = 0, // ... + base 0x2000
   Mask2001 = 1,
   Status2002 = 2,
@@ -25,7 +32,7 @@ enum Register {
   Scroll2005 = 5,
   Addr2006 = 6,
   Data2007 = 7,
-  OamDma2008 = 8
+  OamDma2008 = 8,
 }
 
 impl From<u16> for Register {
@@ -35,7 +42,11 @@ impl From<u16> for Register {
 }
 
 #[derive(PartialEq, Eq)]
-pub enum TickEvent { Nothing, EnteredVblank, TriggerIrq }
+pub enum TickEvent {
+  Nothing,
+  EnteredVblank,
+  TriggerIrq,
+}
 
 #[allow(dead_code)]
 pub struct Ppu {
@@ -49,9 +60,9 @@ pub struct Ppu {
   oam_address: u8,
   sprites: Vec<Sprite>, // AKA secondary OAM
 
-  v: u16, // Current VRAM address (15 bits)
+  v: u16,     // Current VRAM address (15 bits)
   t: u16, // Temporary VRAM address (15 bits); can also be thought of as the address of the top left onscreen tile.
-  fine_x: u8, // Fine X scroll (3 bits) 
+  fine_x: u8, // Fine X scroll (3 bits)
   w_latch: bool,
 
   in_vblank: bool,
@@ -116,7 +127,6 @@ impl Ppu {
     }
   }
 
-
   pub fn cpu_read_register(&mut self, address: u16) -> u8 {
     match Register::from(address) {
       Register::Status2002 => {
@@ -133,7 +143,7 @@ impl Ppu {
         self.in_vblank = false;
         self.w_latch = true;
         status
-      },
+      }
       Register::OamData2004 => self.oam[self.oam_address as usize],
       Register::Data2007 => {
         let address = self.v & 0x3fff; // 14 bits wide
@@ -142,18 +152,18 @@ impl Ppu {
           0x2000..=0x2fff => self.vram.read(address),
           0x3000..=0x3eff => self.vram.read(address - 0x1000),
           0x3f00..=0x3fff => self.palette.read(address),
-          _  => panic!("invalid read: {:#06x}", address)
+          _ => panic!("invalid read: {:#06x}", address),
         };
         let return_value = match address {
           0..=0x3eff => self.data_buffer,
-          _ => value // Palette is not buffered
+          _ => value, // Palette is not buffered
         };
         self.data_buffer = value;
 
         self.inc_v();
         return_value
       }
-      _ => 0
+      _ => 0,
     }
   }
 
@@ -169,14 +179,14 @@ impl Ppu {
         // t: ...GH.. ........ <- d: ......GH
         //    <used elsewhere> <- d: ABCDEF..
         self.t = (self.t & 0xf3ff) | ((val as u16 & 0x3) << 10);
-      },
+      }
       Register::Mask2001 => {
         self.show_background_left = val & 0x02 == 0x02;
         self.show_sprites_left = val & 0x04 == 0x04;
         self.show_background = val & 0x08 == 0x08;
         self.show_sprites = val & 0x10 == 0x10;
         self.rendering_enabled = self.show_background || self.show_sprites;
-      },
+      }
       Register::OamAddr2003 => self.oam_address = val,
       Register::OamData2004 => {
         self.oam[self.oam_address as usize] = val;
@@ -197,7 +207,7 @@ impl Ppu {
         }
 
         self.w_latch = !self.w_latch;
-      },
+      }
       Register::Addr2006 => {
         if self.w_latch {
           let cdefgh = val & 0x3f;
@@ -208,7 +218,7 @@ impl Ppu {
           self.t |= val as u16;
           self.v = self.t;
         }
-        
+
         self.w_latch = !self.w_latch;
       }
       Register::Data2007 => {
@@ -218,11 +228,11 @@ impl Ppu {
           0x2000..=0x2fff => self.vram.write(val, address),
           0x3000..=0x3eff => self.vram.write(val, address - 0x1000),
           0x3f00..=0x3fff => self.palette.write(val, address),
-          _  => (), //panic!("invalid write: {:#06x} for {:?}", address, kind)
+          _ => (), //panic!("invalid write: {:#06x} for {:?}", address, kind)
         }
         self.inc_v();
       }
-      _ => ()
+      _ => (),
     }
   }
 
@@ -238,7 +248,9 @@ impl Ppu {
           self.sprite_overflow = false;
         }
         (Phase::Render | Phase::PreRender, 256, Rendering::Enabled) => self.inc_y(),
-        (Phase::Render | Phase::PreRender, 257, Rendering::Enabled) => self.copy_horizontal_from_t_to_v(),
+        (Phase::Render | Phase::PreRender, 257, Rendering::Enabled) => {
+          self.copy_horizontal_from_t_to_v()
+        }
         (Phase::PreRender, 280..=304, Rendering::Enabled) => self.copy_vertical_from_t_to_v(),
         (Phase::Render, 0..=255, _) => {
           // Visible pixels
@@ -254,7 +266,7 @@ impl Ppu {
           if sprites_visible {
             self.render_sprite_pixel(x, y, bg_pixel_drawn);
           }
-        },
+        }
         (Phase::Render, 320, _) => {
           // Load sprites for next line (sprite tile loading interval)
           // https://www.nesdev.org/wiki/PPU_rendering#Cycles_257-320
@@ -264,16 +276,20 @@ impl Ppu {
         (Phase::EnteringVblank, 1, _) => self.in_vblank = true,
         (Phase::Render | Phase::PostRender, 260, Rendering::Enabled) => {
           irq = self.rom_mapper.borrow_mut().irq()
-        },
+        }
         _ => (),
       }
 
       trace!(
-        Tag::PpuTiming, 
-        "clock: {}, cycle: {}, scanline: {}, vblank: {}, nmi: {}", 
-        self.state.clock(), self.state.cycle(), self.state.scanline(), self.in_vblank, self.nmi_at_start_of_vblank
+        Tag::PpuTiming,
+        "clock: {}, cycle: {}, scanline: {}, vblank: {}, nmi: {}",
+        self.state.clock(),
+        self.state.cycle(),
+        self.state.scanline(),
+        self.in_vblank,
+        self.nmi_at_start_of_vblank
       );
-    };
+    }
 
     if !vblank_pre_ticks && self.in_vblank {
       TickEvent::EnteredVblank
@@ -287,7 +303,7 @@ impl Ppu {
   fn render_background_pixel(&mut self, x: usize, y: usize) -> bool {
     let v = self.v;
     let fine_x = self.fine_x as u16;
-    
+
     let scroll_x = (v & 0x1f) * 8 + fine_x;
     let scroll_y = ((v >> 5) & 0x1f) * 8 + (v >> 12);
 
@@ -309,8 +325,10 @@ impl Ppu {
     let horizontal_tile: u16 = virtual_x / 8;
 
     let nametable_offset = vertical_tile * 32 + horizontal_tile;
-    let nametable_entry = self.vram.read_indexed(virtual_nametable_index, nametable_offset);
-    
+    let nametable_entry = self
+      .vram
+      .read_indexed(virtual_nametable_index, nametable_offset);
+
     let vertical_attr = vertical_tile / 4;
     let horizontal_attr = horizontal_tile / 4;
 
@@ -322,8 +340,12 @@ impl Ppu {
 
     let color_bits = (attr >> ((horizontal_box_pos * 2) + (vertical_box_pos * 4))) & 0x3;
 
-    let first_plane_byte = self.read_chr_rom(self.background_table_address + (nametable_entry as u16 * 0x10 + virtual_y % 8));
-    let second_plane_byte = self.read_chr_rom(self.background_table_address + (nametable_entry as u16 * 0x10 + (virtual_y % 8) + 8));
+    let first_plane_byte = self.read_chr_rom(
+      self.background_table_address + (nametable_entry as u16 * 0x10 + virtual_y % 8),
+    );
+    let second_plane_byte = self.read_chr_rom(
+      self.background_table_address + (nametable_entry as u16 * 0x10 + (virtual_y % 8) + 8),
+    );
 
     let first_plane_bit = first_plane_byte >> (7 - virtual_x % 8) & 0x1;
     let second_plane_bit = second_plane_byte >> (7 - virtual_x % 8) & 0x1;
@@ -333,8 +355,7 @@ impl Ppu {
       let rgb = self.palette.rgb_from_index(0);
       self.frame.set_pixel_xy(x, y, rgb);
       false
-    } 
-    else {
+    } else {
       let palette_entry = first_plane_bit + (second_plane_bit * 2) + (color_bits * 4);
       let rgb = self.palette.rgb_from_index(palette_entry);
       self.frame.set_pixel_xy(x, y, rgb);
@@ -362,7 +383,8 @@ impl Ppu {
         }
 
         // https://www.nesdev.org/wiki/PPU_OAM#Sprite_zero_hits
-        let s0_hit_disabled = x == 255 || (x <= 7 && (!self.show_sprites_left || !self.show_background_left));
+        let s0_hit_disabled =
+          x == 255 || (x <= 7 && (!self.show_sprites_left || !self.show_background_left));
 
         if !s0_hit_disabled && !self.sprite_0_hit && sprite.zero && bg_pixel_drawn {
           self.sprite_0_hit = true;
@@ -379,7 +401,8 @@ impl Ppu {
     let next_line = self.state.scanline() as u8 + 1;
     let mut sprite_n = 0;
 
-    for sprite in 0..64 { // there's 64 sprites in total
+    for sprite in 0..64 {
+      // there's 64 sprites in total
       let sprite_addr = sprite * 4; // each sprite is 4 bytes
 
       // https://www.nesdev.org/wiki/PPU_OAM
@@ -405,7 +428,7 @@ impl Ppu {
 
         let attr = self.oam[sprite_addr + 2];
         let x = self.oam[sprite_addr + 3];
-        
+
         let vflip = (attr & 0x80) == 0x80;
         let tile_row = match vflip {
           true => sprite_height - 1 - (next_line - sprite_y),
@@ -437,7 +460,7 @@ impl Ppu {
           pixels,
           priority: (attr & 0x20) == 0x20,
           x,
-          zero: sprite_n == 0
+          zero: sprite_n == 0,
         });
 
         sprite_n += 1;

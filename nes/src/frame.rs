@@ -62,8 +62,8 @@ pub struct RenderFrame {
 
 impl RenderFrame {
   pub fn new<FORMAT>() -> Self
-    where
-      FORMAT : PixelFormat + SetPixel + 'static
+  where
+    FORMAT: PixelFormat + SetPixel + 'static,
   {
     Self {
       bytes_per_pixel: FORMAT::BYTES_PER_PIXEL,
@@ -75,7 +75,7 @@ impl RenderFrame {
   }
 
   // The NES PPU always generates a 256x240 pixel picture.
-  pub fn set_pixel_xy(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {    
+  pub fn set_pixel_xy(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
     let i = ((y * NES_WIDTH) + x) * self.bytes_per_pixel;
     (self.set_pixel_fn)(&mut self.buf, i, rgb);
   }
@@ -92,7 +92,9 @@ impl RenderFrame {
   pub fn pixels_ntsc(&self) -> impl Iterator<Item = u8> + '_ {
     let buf_pitch = NES_WIDTH * self.bytes_per_pixel;
     let overscan_pitch = NTSC_OVERSCAN_PIXELS * self.bytes_per_pixel;
-    self.buf.chunks(buf_pitch) // Chunk as rows
+    self
+      .buf
+      .chunks(buf_pitch) // Chunk as rows
       .skip(NTSC_OVERSCAN_PIXELS) // Skip first X rows
       .map(move |row| &row[overscan_pitch..buf_pitch - overscan_pitch]) // Skip col edges
       .take(NTSC_HEIGHT)
@@ -108,4 +110,3 @@ impl RenderFrame {
     self.pitch_pal
   }
 }
-
