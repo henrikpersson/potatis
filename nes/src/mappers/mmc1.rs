@@ -42,17 +42,20 @@ pub struct MMC1<R: Rom> {
   chr_rom_bank_mode: ChrBankMode,
   selected_chr_bank_0: u8,
   selected_chr_bank_1: u8,
-  mirroring: Mirroring,
+  mirroring_cb: Option<Box<dyn FnMut(&Mirroring)>>,
 
   num_shift_writes: u8,
   shift_register: u8,
 }
 
-impl<R: Rom> Mapper for MMC1<R> {}
+impl<R: Rom> Mapper for MMC1<R> {
+  fn on_runtime_mirroring(&mut self, cb: Box<dyn FnMut(&Mirroring)>) {
+    self.mirroring_cb = Some(cb);
+  }
+}
 
 impl<R: Rom> MMC1<R> {
   pub fn new(cart: Cartridge<R>) -> Self {
-    let mirroring = cart.mirroring();
     MMC1 {
       prg_rom_bank_num: cart.prg().len() / kilobytes::KB16,
       cart,
@@ -65,7 +68,7 @@ impl<R: Rom> MMC1<R> {
       shift_register: 0,
       num_shift_writes: 0,
       selected_prg_bank: 0,
-      mirroring,
+      mirroring_cb: None,
     }
   }
 
@@ -129,13 +132,21 @@ impl<R: Rom> MMC1<R> {
   }
 
   fn update_control_register(&mut self, val: u8) {
-    self.mirroring = match val & 0b11 {
+    let runtime_mirroring = match val & 0b11 {
       0 => Mirroring::SingleScreenLower,
       1 => Mirroring::SingleScreenUpper,
       2 => Mirroring::Vertical,
       3 => Mirroring::Horizontal,
       _ => unreachable!(),
     };
+
+    if self.cart.mirroring() != runtime_mirroring {
+      let cb = self
+        .mirroring_cb
+        .as_mut()
+        .expect("mirroring changed, no one to tell");
+      (*cb)(&runtime_mirroring)
+    }
 
     let chr_rom_bank_mode = (val & 0b10000) >> 4;
     self.chr_rom_bank_mode = match chr_rom_bank_mode {
