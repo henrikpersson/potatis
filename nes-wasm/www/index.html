@@ -2,26 +2,107 @@
 <html lang="en-US">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Potatis</title>
     <script type="module" src="index.js"></script>
 
+    <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
+    <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
     <style>
-      body {
-        background-color: black;
-        color: white;
-      }
+    * {
+      font-family: "Press Start 2P";
+      font-size: 12px;
+    }
+
+    body, html {
+      height: 100%;
+      margin: 0;
+    }
+
+    #c {
+      width: 420px;
+      height: 392px;
+      margin: 10px;
+      border: 1px solid gray;
+    }
+
+    .outer {
+      background-image: url("bg.png");
+      height: 100%;
+      min-height: 1100px;
+      padding: 50px 0px 50px 0px;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+    }
+
+    .nes-field {
+      margin-bottom: 20px;
+    }
+
+    .nes-container {
+      width: 550px;
+      height: 920px;
+    }
+
+    .nes-table-responsive {
+      overflow: visible;
+      width: calc(100% + 8px);
+      margin-left: -8px;
+      margin-bottom: 50px;
+      max-width: none;
+    }
+
+    .nes-table {
+      width: 100%;
+    }
+
+    .nes-table.is-dark::before {
+      pointer-events: none;
+    }
     </style>
   </head>
   <body>
-    <input type="file" id="file" />
-    <canvas width="240" height="224" style="border: 1px solid gray" id="c"></canvas>
-    <p>
-      Up, left, down, right: WASD<br />
-      B: K<br />
-      A: L<br />
-      Select: [Space]<br />
-      Start: [Enter]<br />
-      Reset: R<br />
-    </p>
+    <div class="outer">
+      <div class="nes-container with-title is-centered is-dark">
+        <p class="title">🥔 Potatis</p>
+
+        <canvas id="c"></canvas>
+
+        <div class="nes-field">
+          <label for="file_field">Select ROM</label>
+          <input type="file" id="file_field" class="nes-input is-dark">
+        </div>
+
+        <div class="nes-table-responsive">
+          <table class="nes-table is-bordered is-dark is-centered">
+            <thead>
+              <tr>
+                <th><i class="nes-logo"></i></th>
+                <th><i class="fa fa-keyboard-o" style="font-size:42px"></i></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Up</td><td>W</td></tr>
+              <tr><td>Left</td><td>A</td></tr>
+              <tr><td>Down</td><td>S</td></tr>
+              <tr><td>Right</td><td>D</td></tr>
+              <tr><td>B</td><td>K</td></tr>
+              <tr><td>A</td><td>L</td></tr>
+              <tr><td>Select</td><td>[SPACE]</td></tr>
+              <tr><td>Start</td><td>[Enter]</td></tr>
+              <tr><td>Reset</td><td>R</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Find the source code at <a href="https://github.com/henrikpersson/potatis"><i class="nes-icon github"></i></a></p>
+
+      </div>
+    </div>
   </body>
 </html>
