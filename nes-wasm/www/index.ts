@@ -15,7 +15,6 @@ export class BrowserNes {
   nes: NesWasm;
   mem: WebAssembly.Memory;
   ctx: CanvasRenderingContext2D;
-  frame_buffer: Uint8ClampedArray;
   frame_ready: boolean;
   keyboard: KeyState[];
   killed: boolean;
@@ -26,7 +25,6 @@ export class BrowserNes {
     this.nes = NesWasm.new(this, bincart);
     this.ctx = ctx;
     this.mem = mem;
-    this.frame_buffer = undefined;
     this.frame_ready = false;
     this.keyboard = new Array(8).fill(KeyState.None);
 
@@ -41,7 +39,6 @@ export class BrowserNes {
       let btn = keymap[ev.key];
       if (btn != null) {
         this.keyboard[btn] = KeyState.Released;
-        // console.log(this.keyboard);
 
         // LOL
         setTimeout(() => {
@@ -57,11 +54,8 @@ export class BrowserNes {
   }
 
   on_frame_ready(frame_ptr: number, len: number) {
-    if (!this.frame_buffer) {
-      this.frame_buffer = new Uint8ClampedArray(this.mem.buffer, frame_ptr, len);
-    }
-
-    this.ctx.putImageData(new ImageData(this.frame_buffer, 240, 224), 0, 0);
+    const buf = new Uint8ClampedArray(this.mem.buffer, frame_ptr, len);
+    this.ctx.putImageData(new ImageData(buf, 240, 224), 0, 0);
     this.frame_ready = true;
   }
 
