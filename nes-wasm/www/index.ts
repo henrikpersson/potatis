@@ -27,11 +27,12 @@ export class BrowserNes {
     this.mem = mem;
     this.frame_ready = false;
     this.keyboard = new Array(8).fill(KeyState.None);
-
+ 
     document.addEventListener('keydown', (ev) => {
       let btn = keymap[ev.key];
       if (btn != null) {
         this.keyboard[btn] = KeyState.Pressed;
+        ev.preventDefault();
       }
     })
 
@@ -44,6 +45,7 @@ export class BrowserNes {
         setTimeout(() => {
           this.keyboard[btn] = KeyState.None;
         }, 20);
+        ev.preventDefault();
       }
     })
   }
@@ -92,12 +94,14 @@ export class BrowserNes {
   }
 }
 
-const ctx = document.getElementById('c').getContext('2d');
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
 const wasm = await wasmInit();
 let instance = new BrowserNes(ctx, wasm.memory, []); // empty bin == nestest
 instance.loop();
+c.focus();
 
-document.getElementById('file').addEventListener('change', (input: any) => {
+document.getElementById('file_field').addEventListener('change', (input: any) => {
   const file: File = input.target.files[0]
   const reader = new FileReader()
   reader.onload = async () => {
@@ -109,7 +113,8 @@ document.getElementById('file').addEventListener('change', (input: any) => {
     const bincart = new Uint8Array(reader.result)
     instance = new BrowserNes(ctx, wasm.memory, bincart);
     instance.loop();
-  }
+    c.focus();
+  } 
   reader.onerror = () => {
     alert(reader.error)
   }
