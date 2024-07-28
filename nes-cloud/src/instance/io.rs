@@ -1,8 +1,6 @@
-use std::io::Cursor;
 use std::io::Read;
 use std::io::Write;
 use std::net::TcpStream;
-use std::time::Duration;
 
 pub enum CloudStream {
   Offline,

@@ -33,6 +33,5 @@ md5 = "0.7.0"
 png = "0.17.7"
 
 [dev-dependencies]
-lazy_static = "1.4.0"
 assert_cmd = "2.0"
 rand = "0.8.5"

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 nes = { path = "../nes", default-features = false }
-embedded-alloc = "0.5.0" # Heap, linked_list allocator
+embedded-alloc = "0.5.1" # Heap, linked_list allocator
 embedded-graphics = "0.7.1" # HAL Display drivers, drawing
 embedded-hal = { version = "0.2.5", features = ["unproven"] } # The HAL. Generic pins IO etc..
 cortex-m = { version = "0.7.2", features = ["critical-section"] } # low level access to cpu, delays etc.

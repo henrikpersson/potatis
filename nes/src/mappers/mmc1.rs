@@ -1,5 +1,6 @@
 use core::panic;
 
+use alloc::boxed::Box;
 use common::kilobytes;
 use mos6502::memory::Bus;
 
