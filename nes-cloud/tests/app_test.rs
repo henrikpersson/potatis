@@ -1,6 +1,4 @@
-#[macro_use]
-extern crate lazy_static;
-
+use std::sync::LazyLock;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Read;
@@ -22,9 +20,9 @@ const COLOR_PORT: u16 = 5555;
 const SIXEL_PORT: u16 = 6666;
 const ASCII_PORT: u16 = 7777;
 
-lazy_static! {
-  static ref RES: Resources = Resources::load("resources.yaml");
-}
+static RES: LazyLock<Resources> = LazyLock::new(|| {
+  Resources::load("resources.yaml")
+});
 
 fn assert_eq_str(expected: &[u8], actual: &[u8]) {
   let l = String::from_utf8(expected.into()).unwrap();

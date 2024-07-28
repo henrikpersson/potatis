@@ -23,7 +23,8 @@ pub mod error {
     NotYetImplemented(String),
   }
 
-  impl core::error::Error for CartridgeError {}
+  #[cfg(feature = "std")]
+  impl std::error::Error for CartridgeError {}
 
   impl core::fmt::Display for CartridgeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

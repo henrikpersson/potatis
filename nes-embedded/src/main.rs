@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(alloc_error_handler)]
 
 use hal::multicore::Stack;
 use hal::pac;
@@ -12,7 +11,6 @@ use rp2040_hal as hal;
 mod board;
 mod clocks;
 
-use core::alloc::Layout;
 use core::cell::RefCell;
 
 use board::Board;
@@ -47,20 +45,20 @@ static FRAME_BUF: Mutex<RefCell<[u8; FRAME_BUF_SIZE]>> =
 
 static mut CORE1_STACK: Stack<2048> = Stack::new();
 
+/*
 #[alloc_error_handler]
 fn oom(_: Layout) -> ! {
   defmt::panic!("OOM");
 }
+*/
 
 struct EmbeddedHost {
-  start: bool,
   core1: SioFifo,
 }
 
 impl EmbeddedHost {
   fn new(core1: SioFifo) -> Self {
     Self {
-      start: false,
       core1,
     }
   }
@@ -82,7 +80,7 @@ impl nes::nes::HostPlatform for EmbeddedHost {
     self.core1.write(1);
   }
 
-  fn poll_events(&mut self, joypad: &mut nes::joypad::Joypad) -> nes::nes::Shutdown {
+  fn poll_events(&mut self, _joypad: &mut nes::joypad::Joypad) -> nes::nes::Shutdown {
     nes::nes::Shutdown::No
   }
 }

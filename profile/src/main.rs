@@ -1,7 +1,4 @@
 #![cfg_attr(not(feature = "profile_cpu_std"), no_std)]
-// #![feature(alloc_error_handler)]
-#![feature(iter_collect_into)]
-// #![feature(default_alloc_error_handler)]
 
 extern crate alloc;
 use alloc::vec::Vec;
@@ -26,10 +23,8 @@ impl nes::nes::HostPlatform for FakeHost {
 
   #[no_mangle]
   fn render(&mut self, f: &nes::frame::RenderFrame) {
-    let mut buf = Vec::with_capacity(EXPECTED_FRAME_SIZE);
-    f.pixels_ntsc().collect_into(&mut buf);
+    let buf: Vec<u8> = f.pixels_ntsc().collect();
     assert_eq!(buf.len(), EXPECTED_FRAME_SIZE);
-    assert_eq!(buf.capacity(), EXPECTED_FRAME_SIZE);
   }
 
   fn poll_events(&mut self, _: &mut nes::joypad::Joypad) -> nes::nes::Shutdown {

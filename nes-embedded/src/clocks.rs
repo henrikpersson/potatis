@@ -8,6 +8,7 @@ use rp2040_hal as hal;
 
 pub const XOSC_CRYSTAL_FREQ: u32 = 12_000_000;
 
+#[allow(dead_code)]
 pub fn configure_normal(
   xosc_dev: pac::XOSC,
   clocks_dev: pac::CLOCKS,

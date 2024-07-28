@@ -1,10 +1,11 @@
 [workspace]
+resolver = "2"
 members = [
-  "common", 
-  "mos6502", 
-  "nes", 
-  "nes-sdl", 
-  "nes-wasm", 
+  "common",
+  "mos6502",
+  "nes",
+  "nes-sdl",
+  "nes-wasm",
   "nes-android",
 ]
 

@@ -154,7 +154,7 @@ struct AsciiRenderer {
 }
 
 impl AsciiRenderer {
-  const CHARSET: &str = " .-`',:_;~\"/!|\\i^trc*v?s()+lj1=e{[]z}<xo7f>aJy3Iun542b6Lw9k#dghq80VpT$YACSFPUZ%mEGXNO&DKBR@HQWM";
+  const CHARSET: &'static str = " .-`',:_;~\"/!|\\i^trc*v?s()+lj1=e{[]z}<xo7f>aJy3Iun542b6Lw9k#dghq80VpT$YACSFPUZ%mEGXNO&DKBR@HQWM";
   const MAX: f64 = Self::CHARSET.len() as f64;
 
   fn new() -> Self {
@@ -171,7 +171,8 @@ impl Renderer for AsciiRenderer {
 
     frame
       .pixels_ntsc()
-      .array_chunks::<{ nes::frame::PixelFormatRGB888::BYTES_PER_PIXEL }>()
+      .collect::<Vec<u8>>()
+      .chunks_exact(nes::frame::PixelFormatRGB888::BYTES_PER_PIXEL)
       .enumerate()
       .for_each(|(n, p)| {
         // https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color

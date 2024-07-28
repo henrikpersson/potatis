@@ -1,4 +1,3 @@
-#![feature(iter_array_chunks)]
 
 use std::error::Error;
 use std::fmt::Display;
@@ -8,7 +7,6 @@ use std::net::TcpStream;
 use std::ops::Sub;
 use std::os::unix::prelude::FromRawFd;
 use std::path::PathBuf;
-use std::ptr::read;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 use std::time::Duration;

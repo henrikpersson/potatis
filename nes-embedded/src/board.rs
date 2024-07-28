@@ -82,8 +82,8 @@ impl Board {
 
     let dc = pins.lcd_dc.into_push_pull_output();
     let cs = pins.lcd_cs.into_push_pull_output();
-    let sck = pins.spi_sclk.into_mode::<FunctionSpi>();
-    let mosi = pins.spi_mosi.into_mode::<FunctionSpi>();
+    let _sck = pins.spi_sclk.into_mode::<FunctionSpi>();
+    let _mosi = pins.spi_mosi.into_mode::<FunctionSpi>();
 
     let spi_screen = Spi::<_, _, 8>::new(spi0).init(resets, 125u32.MHz(), 16u32.MHz(), &MODE_0);
 
