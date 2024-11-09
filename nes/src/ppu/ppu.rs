@@ -10,7 +10,6 @@ use crate::frame::RenderFrame;
 use crate::mappers::Mapper;
 use crate::ppu::state::Phase;
 use crate::ppu::state::Rendering;
-use crate::trace;
 
 #[derive(Default, Clone, Copy, Debug)]
 struct Sprite {
@@ -128,6 +127,9 @@ impl Ppu {
   }
 
   pub fn cpu_read_register(&mut self, address: u16) -> u8 {
+    // if address != 0x0002 {
+    //   panic!("invalid read: {:#06x}", address);
+    // }
     match Register::from(address) {
       Register::Status2002 => {
         let mut status = 0;
@@ -279,16 +281,6 @@ impl Ppu {
         }
         _ => (),
       }
-
-      trace!(
-        Tag::PpuTiming,
-        "clock: {}, cycle: {}, scanline: {}, vblank: {}, nmi: {}",
-        self.state.clock(),
-        self.state.cycle(),
-        self.state.scanline(),
-        self.in_vblank,
-        self.nmi_at_start_of_vblank
-      );
     }
 
     if !vblank_pre_ticks && self.in_vblank {
@@ -481,7 +473,6 @@ impl Ppu {
     // assert!(self.oam_address == 0x0000);
     self.oam_address = 0;
 
-    trace!(Tag::PpuTiming, "DMA_TICK: {}", self.state.even_frame());
     if self.state.even_frame() {
       self.tick(513 * 3);
     } else {

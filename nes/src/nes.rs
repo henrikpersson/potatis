@@ -3,16 +3,14 @@ use alloc::rc::Rc;
 use alloc::string::ToString;
 use core::cell::RefCell;
 use core::time::Duration;
+use mos6502::cpu::AC;
+use mos6502::cpu::SP;
+use mos6502::cpu::X;
+use mos6502::cpu::Y;
 
-#[allow(unused_imports)]
 use mos6502::cpu::Cpu;
-#[allow(unused_imports)]
-use mos6502::cpu::Reg;
-#[allow(unused_imports)]
-use mos6502::debugger::Debugger;
-#[allow(unused_imports)]
-use mos6502::memory::Bus;
-#[allow(unused_imports)]
+#[cfg(feature = "debugger")]
+use mos6502::debugger::AttachedDebugger;
 use mos6502::mos6502::Mos6502;
 
 use crate::cartridge::Cartridge;
@@ -25,7 +23,6 @@ use crate::joypad::Joypad;
 use crate::nesbus::NesBus;
 use crate::ppu::ppu::Ppu;
 use crate::ppu::ppu::TickEvent;
-use crate::trace;
 
 const DEFAULT_FPS_MAX: usize = 60;
 
@@ -92,12 +89,12 @@ impl HostPlatform for HeadlessHost {
 }
 
 pub struct Nes {
-  machine: Mos6502,
+  machine: Mos6502<NesBus>,
   ppu: Rc<RefCell<Ppu>>,
   host: Box<dyn HostPlatform>,
   joypad: Rc<RefCell<Joypad>>,
   timing: FrameTiming,
-  show_fps: bool,
+  pub show_fps: bool,
   shutdown: Shutdown,
 }
 
@@ -117,8 +114,7 @@ impl Nes {
     let mut cpu = Cpu::new(bus);
     cpu.reset();
 
-    let mut machine = Mos6502::new(cpu);
-    machine.inc_cycles(7); // Startup cycles..
+    let machine = Mos6502::new(cpu);
 
     Self {
       machine,
@@ -132,7 +128,7 @@ impl Nes {
   }
 
   pub fn insert_headless_host<R: Rom + 'static>(cartridge: Cartridge<R>) -> Self {
-    Self::insert(cartridge, HeadlessHost::default())
+    Self::insert(cartridge, HeadlessHost)
   }
 
   pub fn tick(&mut self) {
@@ -142,8 +138,6 @@ impl Nes {
     let ppu_event = ppu.tick(cpu_cycles * 3);
 
     if ppu_event == TickEvent::EnteredVblank {
-      trace!(Tag::PpuTiming, "VBLANK");
-
       if self.show_fps {
         let fps = self.timing.fps_avg(self.host.elapsed_millis());
         fonts::draw(fps.to_string().as_str(), (10, 10), ppu.frame_mut());
@@ -157,40 +151,39 @@ impl Nes {
       self.timing.post_delay(self.host.elapsed_millis());
 
       if ppu.nmi_on_vblank() {
-        trace!(Tag::PpuTiming, "NMI");
-        self.machine.cpu_mut().nmi();
+        self.machine.cpu.nmi();
       }
     }
 
     if ppu_event == TickEvent::TriggerIrq {
-      self.machine.cpu_mut().irq();
+      self.machine.cpu.irq();
     }
 
     if self.shutdown == Shutdown::Reset {
-      self.machine.cpu_mut().reset();
+      self.machine.cpu.reset();
       self.shutdown = Shutdown::No
     }
   }
 
   #[cfg(feature = "debugger")]
-  pub fn debugger(&mut self) -> &mut Debugger {
+  pub fn debugger(&mut self) -> AttachedDebugger<NesBus> {
     self.machine.debugger()
   }
 
-  pub fn cpu(&self) -> &Cpu {
-    self.machine.cpu()
+  pub fn cpu_cycles(&self) -> usize {
+    self.machine.total_cycles
   }
 
-  pub fn cpu_mut(&mut self) -> &mut Cpu {
-    self.machine.cpu_mut()
+  pub fn cpu(&self) -> &Cpu<NesBus> {
+    &self.machine.cpu
   }
 
-  pub fn bus(&self) -> &Box<dyn Bus> {
-    self.machine.bus()
+  pub fn cpu_mut(&mut self) -> &mut Cpu<NesBus> {
+    &mut self.machine.cpu
   }
 
-  pub fn cpu_ticks(&self) -> usize {
-    self.machine.ticks()
+  pub fn bus(&self) -> &NesBus {
+    &self.machine.cpu.bus
   }
 
   pub fn fps_max(&mut self, fps_max: usize) {
@@ -266,29 +259,29 @@ impl core::fmt::Debug for Nes {
       write!(
         f,
         "{:04X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} PPU:{:ppuw$}, {:>2} CYC:{}",
-        c.pc(),
-        c[Reg::AC],
-        c[Reg::X],
-        c[Reg::Y],
-        c.flags_as_byte(),
-        c[Reg::SP],
+        c.pc,
+        c.regs[AC],
+        c.regs[X],
+        c.regs[Y],
+        c.flags.bits(),
+        c.regs[SP],
         scanline,
         ppu_cycle,
-        self.machine.cycles()
+        self.machine.total_cycles
       )
     } else {
       write!(
         f,
         "{:04X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} PPU:{:ppuw$},{:>2} CYC:{}",
-        c.pc(),
-        c[Reg::AC],
-        c[Reg::X],
-        c[Reg::Y],
-        c.flags_as_byte(),
-        c[Reg::SP],
+        c.pc,
+        c.regs[AC],
+        c.regs[X],
+        c.regs[Y],
+        c.flags.bits(),
+        c.regs[SP],
         scanline,
         ppu_cycle,
-        self.machine.cycles()
+        self.machine.total_cycles
       )
     }
   }

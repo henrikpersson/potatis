@@ -17,3 +17,7 @@ exclude = [
 
 [profile.test]
 opt-level = 3 # Otherwise integration tests take too long
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true

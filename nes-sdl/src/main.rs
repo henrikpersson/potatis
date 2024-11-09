@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   let mut nes = Nes::insert(cartridge, SdlHostPlatform::new());
   nes.show_fps(std::env::var("SHOW_FPS").is_ok());
 
-  let debugger = nes.debugger();
+  let mut debugger = nes.debugger();
   debugger.verbose(args.verbose);
 
   if let Some(bp) = args.breakpoint {
@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   }
 
   if args.debug {
-    debugger.enable();
+    debugger.suspend();
   }
 
   while nes.powered_on() {
