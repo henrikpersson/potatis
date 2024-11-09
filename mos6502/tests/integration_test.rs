@@ -25,7 +25,7 @@ fn run_test_rom(
     ticks += 1;
     machine.tick();
 
-    let pc = machine.cpu().pc();
+    let pc = machine.cpu.pc;
 
     // Panic if looping on PC, most likely functional_tests trap.
     if Some(pc) == last_pc {

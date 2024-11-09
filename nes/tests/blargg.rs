@@ -1,3 +1,4 @@
+use mos6502::memory::Bus;
 use nes::nes::Nes;
 
 mod common;
@@ -115,8 +116,14 @@ fn run_blargg_test(test: &str, pass_condition: PassCond) {
   let path = format!("../test-roms/nes-test-roms/{}", test);
   let mut nes = common::setup(path.into(), std::env::var("VERBOSE").is_ok());
 
+  nes.debugger().verbose(true);
+
   let result: String;
   let mut status: Option<u8> = None;
+
+  // nes.debugger().watch_memory(0x3ffa, |val| {
+  //   println!("3ffa: {:#04x}", val);
+  // });
 
   nes
     .debugger()
@@ -127,8 +134,8 @@ fn run_blargg_test(test: &str, pass_condition: PassCond) {
   loop {
     nes.tick();
 
-    if PassCond::Pc(nes.cpu().pc()) == pass_condition {
-      println!("success! pc at: {:#06x}", nes.cpu().pc());
+    if PassCond::Pc(nes.cpu().pc) == pass_condition {
+      println!("success! pc at: {:#06x}", nes.cpu().pc);
       return;
     }
 
@@ -162,9 +169,8 @@ fn read_null_terminated_string(range: &[u8]) -> String {
 }
 
 fn check_and_update_status(nes: &Nes, current_status: &mut Option<u8>) -> bool {
-  let mem = nes.cpu().bus();
-  if mem.read_range(0x6001..=0x6003) == VALID_MAGIC {
-    let new_status = mem.read8(0x6000);
+  if nes.cpu().bus.read_range(0x6001..=0x6003) == VALID_MAGIC {
+    let new_status = nes.cpu().bus.read8(0x6000);
     if Some(new_status) != *current_status {
       *current_status = Some(new_status);
       return true;

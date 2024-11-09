@@ -4,7 +4,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 
 use mos6502::cpu::Flag;
-use mos6502::cpu::Reg;
+use mos6502::cpu::SP;
 
 mod common;
 
@@ -36,10 +36,10 @@ fn nestest() {
   // reset vector points to 0xc004 - but that's for graphic mode, we want automation at 0xc000
   nes.cpu_mut().set_pc(NESTEST_ENTRY_POINT);
   // nestest startups with these flags... Maybe the CPU should as well? or only for this weird test?
-  nes.cpu_mut()[Flag::B] = 0;
-  nes.cpu_mut()[Flag::UNUSED] = 1;
-  nes.cpu_mut()[Flag::I] = 1;
-  nes.cpu_mut()[Reg::SP] = 0xfd;
+  nes.cpu_mut().flags.remove(Flag::B);
+  nes.cpu_mut().flags.insert(Flag::UNUSED);
+  nes.cpu_mut().flags.insert(Flag::I);
+  nes.cpu_mut().regs[SP] = 0xfd;
 
   nes
     .debugger()
@@ -61,7 +61,7 @@ fn nestest() {
 
     nes.tick();
     if log[i] != sts && ENABLE_TEST_CYCLES {
-      nes.debugger().dump_backtrace();
+      // nes.dump_backtrace();
       panic!(
         "nestest cycle test mismatch!\n\nExpected:\t{}\nActual:\t\t{}\n",
         log[i], sts
@@ -70,11 +70,11 @@ fn nestest() {
 
     i += 1;
 
-    if nes.cpu().pc() == NESTEST_SUCCESS {
+    if nes.cpu().pc == NESTEST_SUCCESS {
       break;
     }
   }
 
-  let expected_ticks = 8980;
-  assert_eq!(expected_ticks, nes.cpu_ticks());
+  let expected_ticks = 26513;
+  assert_eq!(expected_ticks, nes.cpu_cycles(), "wrong tick count");
 }
